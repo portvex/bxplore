@@ -30,8 +30,12 @@ fn build(dir: &Path, extra: &[&str]) -> Option<Vec<u8>> {
 }
 
 fn check_runs(path: &Path) {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // Only reached on macOS (build() returns None elsewhere), but the file must compile everywhere.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
     let p = path.to_str().unwrap();
     let (ok, out) = run("codesign", &["-f", "-s", "-", p]);
     assert!(ok, "codesign failed: {out}");
