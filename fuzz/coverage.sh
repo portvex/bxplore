@@ -19,7 +19,17 @@ fi
 mkdir -p fuzz/coverage
 for t in $target; do
     mkdir -p "fuzz/corpus/$t" "fuzz/seeds/$t"
-    cargo fuzz coverage "$t" "fuzz/corpus/$t" "fuzz/seeds/$t" >/dev/null 2>&1
+    # One directory only: cargo-fuzz writes the profile of each directory it is
+    # given to the same file, so the last one (often the few seeds) would win.
+    all=$(mktemp -d)
+    cp fuzz/corpus/$t/* fuzz/seeds/$t/* "$all/" 2>/dev/null || true
+    rm -rf "fuzz/coverage/$t"
+    if ! cargo fuzz coverage "$t" "$all" > "fuzz/coverage/$t.log" 2>&1; then
+        echo "$t: cargo fuzz coverage failed, see fuzz/coverage/$t.log" >&2
+        rm -rf "$all"
+        continue
+    fi
+    rm -rf "$all"
     # cargo-fuzz versions differ in where they put the instrumented binary.
     bin="target/$host/coverage/$host/release/$t"
     [ -x "$bin" ] || bin="fuzz/target/$host/coverage/$host/release/$t"

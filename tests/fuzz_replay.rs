@@ -263,6 +263,97 @@ fn saved_fuzzer_inputs_do_not_panic() {
     println!("replayed {n} saved fuzzer input(s)");
 }
 
+/// Resource blobs for the `resource_previews` seeds, in the Windows layouts.
+fn utf16z(s: &str) -> Vec<u8> {
+    s.encode_utf16().chain([0]).flat_map(u16::to_le_bytes).collect()
+}
+
+/// A version resource node: wLength, wValueLength, wType, key, value, children.
+fn ver_block(key: &str, value: &[u8], text: bool, children: &[Vec<u8>]) -> Vec<u8> {
+    let mut b = vec![0u8; 6];
+    b.extend(utf16z(key));
+    b.resize(b.len().div_ceil(4) * 4, 0);
+    b.extend_from_slice(value);
+    for c in children {
+        b.resize(b.len().div_ceil(4) * 4, 0);
+        b.extend_from_slice(c);
+    }
+    let value_len = if text { value.len() / 2 } else { value.len() };
+    let len = b.len() as u16;
+    put(&mut b, 0, &len.to_le_bytes());
+    put(&mut b, 2, &(value_len as u16).to_le_bytes());
+    put(&mut b, 4, &(text as u16).to_le_bytes());
+    b
+}
+
+fn version_resource() -> Vec<u8> {
+    let mut fixed = vec![0u8; 52];
+    put(&mut fixed, 0, &0xFEEF_04BDu32.to_le_bytes());
+    put(&mut fixed, 4, &0x0001_0000u32.to_le_bytes());
+    put(&mut fixed, 8, &0x0002_0001u32.to_le_bytes()); // FileVersion 1.2
+    put(&mut fixed, 12, &0x0004_0003u32.to_le_bytes()); // .3.4
+    put(&mut fixed, 40, &1u32.to_le_bytes()); // VFT_APP
+    let strings: Vec<Vec<u8>> = [("CompanyName", "bxplore"), ("FileDescription", "seed"), ("FileVersion", "1.2.3.4")]
+        .iter()
+        .map(|(k, v)| ver_block(k, &utf16z(v), true, &[]))
+        .collect();
+    let table = ver_block("040904B0", &[], true, &strings);
+    let sfi = ver_block("StringFileInfo", &[], true, &[table]);
+    let var = ver_block("Translation", &[0x09, 0x04, 0xB0, 0x04], false, &[]);
+    let vfi = ver_block("VarFileInfo", &[], true, &[var]);
+    ver_block("VS_VERSION_INFO", &fixed, false, &[sfi, vfi])
+}
+
+/// One string table block: 16 counted UTF-16 strings, some empty.
+fn string_table_resource() -> Vec<u8> {
+    let mut b = Vec::new();
+    for i in 0..16 {
+        let s = if i % 3 == 0 { format!("string {i}") } else { String::new() };
+        b.extend((s.encode_utf16().count() as u16).to_le_bytes());
+        b.extend(s.encode_utf16().flat_map(u16::to_le_bytes));
+    }
+    b
+}
+
+/// A 2x2 32-bit icon image (BITMAPINFOHEADER, pixels, AND mask) and the
+/// group entry that points at it.
+fn icon_resources() -> (Vec<u8>, Vec<u8>) {
+    let mut bmp = vec![0u8; 40];
+    put(&mut bmp, 0, &40u32.to_le_bytes());
+    put(&mut bmp, 4, &2u32.to_le_bytes());
+    put(&mut bmp, 8, &4u32.to_le_bytes()); // height counts the mask too
+    put(&mut bmp, 12, &1u16.to_le_bytes());
+    put(&mut bmp, 14, &32u16.to_le_bytes());
+    bmp.extend([0x10, 0x20, 0x30, 0xff, 0x40, 0x50, 0x60, 0xff, 0x70, 0x80, 0x90, 0xff, 0xa0, 0xb0, 0xc0, 0xff]);
+    bmp.extend([0u8; 8]);
+    let mut group = vec![0, 0, 1, 0, 1, 0];
+    group.extend([2, 2, 0, 0]);
+    group.extend(1u16.to_le_bytes());
+    group.extend(32u16.to_le_bytes());
+    group.extend((bmp.len() as u32).to_le_bytes());
+    group.extend(1u16.to_le_bytes());
+    (bmp, group)
+}
+
+fn png_resource() -> Vec<u8> {
+    let img = image::RgbaImage::from_fn(3, 2, |x, y| image::Rgba([x as u8 * 80, y as u8 * 120, 200, 255]));
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
+#[test]
+fn resource_seeds_decode() {
+    use bxplore::pe::resources;
+    let v = resources::version_info(&version_resource());
+    assert!(v.contains("VS_VERSION_INFO") && v.contains("CompanyName") && v.contains("bxplore"), "{v}");
+    assert!(resources::string_table(&string_table_resource(), 1).contains("string 3"));
+    let (bmp, group) = icon_resources();
+    assert!(!resources::group_icon(&group).is_empty());
+    assert_eq!(resources::decode_image(&bmp, true).map(|i| (i.0, i.1)), Some((2, 2)));
+    assert_eq!(resources::decode_image(&png_resource(), false).map(|i| (i.0, i.1)), Some((3, 2)));
+}
+
 /// Writes the synthetic files to `fuzz/seeds` as starting corpus for the fuzzers:
 /// `cargo test --test fuzz_replay write_seeds -- --ignored`
 #[test]
@@ -285,6 +376,13 @@ fn write_seeds() {
     }
     std::fs::write(root.join("parse_any").join("bind_run.macho"), bind_run_macho()).unwrap();
     std::fs::write(root.join("parse_any").join("aliased_versym.elf"), aliased_versym_elf(200, 0x400)).unwrap();
+    std::fs::create_dir_all(root.join("resource_previews")).unwrap();
+    let (bmp, group) = icon_resources();
+    for (name, data) in
+        [("version.bin", version_resource()), ("strings.bin", string_table_resource()), ("icon.bmp", bmp), ("group.bin", group), ("image.png", png_resource())]
+    {
+        std::fs::write(root.join("resource_previews").join(name), data).unwrap();
+    }
     std::fs::create_dir_all(root.join("pe_edit")).unwrap();
     for (i, ops) in [[5u8, 0x37, 0x18, 0], [0x08, 0x16, 6, 2], [4, 3, 1, 0x26]].iter().enumerate() {
         let mut input = ops.to_vec();

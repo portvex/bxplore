@@ -83,12 +83,24 @@ pub struct Expect {
     pub exports: Vec<String>,
     /// PE: (RVA, type), sorted.
     pub relocs: Vec<(u32, u8)>,
+    /// PE: TLS callback VAs, in order.
+    pub tls_callbacks: Vec<u64>,
+    /// PE: text the dump must contain (PDB path, Rich header, .NET method names).
+    pub shows: Vec<String>,
+    /// PE: the CompanyName of the version resource.
+    pub company: Option<String>,
     /// ELF: DT_NEEDED in order, DT_SONAME, DT_RUNPATH.
     pub needed: Vec<String>,
     pub soname: Option<String>,
     pub runpath: Option<String>,
     /// Mach-O: (load command, path) in order.
     pub paths: Vec<(u32, String)>,
+    /// Mach-O: the file carries a valid ad hoc code signature.
+    pub signed: bool,
+    /// ELF: a GNU hash table over this many dynamic symbols.
+    pub gnu_hashed: Option<usize>,
+    /// ELF: dynamic symbols carry versions (GLIBC_2.2.5 from the first DT_NEEDED).
+    pub versioned: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -240,21 +252,93 @@ pub fn pe(g: &mut Gen) -> (Vec<u8>, Expect) {
         exp.relocs = offs.iter().map(|o| (text_rva + *o as u32, ty)).collect();
     }
 
+    // Header layout: a Rich header after the DOS stub, and sometimes headers
+    // with no room left, so adding a section has to grow them.
+    let nsec = 5;
+    let opt_size = if is64 { 0xF0 } else { 0xE0 };
+    let rich = if g.chance(128) { rich_header(g) } else { Vec::new() };
+    let tight = g.chance(64);
+    let lfanew = if tight { 0x400 - 40 * nsec - opt_size - 24 } else { align(0x80 + rich.len(), 8) };
+    let rich = if 0x80 + rich.len() <= lfanew { rich } else { Vec::new() };
+    let opt = lfanew + 24;
+    let sec_tab = opt + opt_size;
+    let headers = align(sec_tab + 40 * nsec, fa);
+
+    // .rdata: TLS directory and callbacks, a debug directory with a CodeView
+    // record, and a .NET header with metadata and method bodies.
+    let rdata_rva = reloc_rva + align(reloc.len().max(1), sa) as u32;
+    let rdata_raw = headers + [text.len(), idata.len(), edata.len(), reloc.len()].iter().map(|l| align(*l, fa)).sum::<usize>();
+    let va = |off: usize| image_base + rdata_rva as u64 + off as u64;
+    let mut rdata = Vec::new();
+    let mut tls_dir = (0u32, 0u32);
+    if g.chance(128) {
+        let dir_size = if is64 { 40 } else { 24 };
+        let callbacks: Vec<u64> = (0..1 + g.below(3)).map(|_| image_base + (text_rva as usize + g.below(text.len())) as u64).collect();
+        let index = dir_size;
+        let array = align(index + 4, ps);
+        let template = array + (callbacks.len() + 1) * ps;
+        rdata.resize(template + 8, 0);
+        for (k, v) in [va(template), va(template + 8), va(index), va(array)].iter().enumerate() {
+            LE.put(&mut rdata, k * ps, *v, ps);
+        }
+        for (k, cb) in callbacks.iter().enumerate() {
+            LE.put(&mut rdata, array + k * ps, *cb, ps);
+        }
+        tls_dir = (rdata_rva, dir_size as u32);
+        exp.tls_callbacks = callbacks;
+    }
+    let mut debug_dir = (0u32, 0u32);
+    if g.chance(128) {
+        let at = align(rdata.len(), 4);
+        let pdb = format!("C:\\fuzz\\{}.pdb", g.name("p"));
+        let mut rsds = b"RSDS".to_vec();
+        rsds.extend(g.bytes(16));
+        rsds.extend(1u32.to_le_bytes());
+        rsds.extend(pdb.as_bytes());
+        rsds.push(0);
+        let rec = at + 28;
+        rdata.resize(rec, 0);
+        LE.put(&mut rdata, at + 12, 2, 4); // IMAGE_DEBUG_TYPE_CODEVIEW
+        LE.put(&mut rdata, at + 16, rsds.len() as u64, 4);
+        LE.put(&mut rdata, at + 20, (rdata_rva as usize + rec) as u64, 4);
+        LE.put(&mut rdata, at + 24, (rdata_raw + rec) as u64, 4);
+        rdata.extend(rsds);
+        debug_dir = (rdata_rva + at as u32, 28);
+        exp.shows.push(pdb);
+    }
+    let mut clr_dir = (0u32, 0u32);
+    if g.chance(96) {
+        let at = align(rdata.len(), 4);
+        let (md, methods) = dotnet_metadata(g, rdata_rva as usize + at + 72);
+        rdata.resize(at + 72, 0);
+        LE.put(&mut rdata, at, 72, 4);
+        LE.put(&mut rdata, at + 4, 2, 2);
+        LE.put(&mut rdata, at + 6, 5, 2);
+        LE.put(&mut rdata, at + 8, (rdata_rva as usize + at + 72) as u64, 4);
+        LE.put(&mut rdata, at + 12, md.len() as u64, 4);
+        LE.put(&mut rdata, at + 16, 1, 4); // ILONLY
+        LE.put(&mut rdata, at + 20, 0x0600_0001, 4);
+        rdata.extend(md);
+        clr_dir = (rdata_rva + at as u32, 72);
+        exp.shows.extend(methods);
+    }
+    if !rich.is_empty() {
+        exp.shows.push("Rich Header".into());
+    }
+
     // Headers.
     let sections: Vec<(&str, u32, Vec<u8>, u32)> = vec![
         (".text", text_rva, text, 0x6000_0020),
         (".idata", idata_rva, idata, 0xC000_0040),
         (".edata", edata_rva, edata, 0x4000_0040),
         (".reloc", reloc_rva, reloc, 0x4200_0040),
+        (".rdata", rdata_rva, rdata, 0xC000_0040),
     ];
-    let lfanew = 0x80;
-    let opt = lfanew + 24;
-    let opt_size = if is64 { 0xF0 } else { 0xE0 };
-    let sec_tab = opt + opt_size;
-    let headers = align(sec_tab + 40 * sections.len(), fa);
+    debug_assert_eq!(sections.len(), nsec);
     let mut f = vec![0u8; headers];
     f[..2].copy_from_slice(b"MZ");
     LE.put(&mut f, 0x3c, lfanew as u64, 4);
+    f[0x80..0x80 + rich.len()].copy_from_slice(&rich);
     f[lfanew..lfanew + 4].copy_from_slice(b"PE\0\0");
     let machine = match (is64, g.below(4)) {
         (true, 0) => 0xAA64,
@@ -293,6 +377,9 @@ pub fn pe(g: &mut Gen) -> (Vec<u8>, Expect) {
     if !exp.relocs.is_empty() {
         set_dir(&mut f, 5, (reloc_rva, sections[3].2.len() as u32));
     }
+    set_dir(&mut f, 6, debug_dir);
+    set_dir(&mut f, 9, tls_dir);
+    set_dir(&mut f, 14, clr_dir);
     let mut raw = headers;
     for (i, (name, rva, data, flags)) in sections.iter().enumerate() {
         let s = sec_tab + 40 * i;
@@ -308,59 +395,201 @@ pub fn pe(g: &mut Gen) -> (Vec<u8>, Expect) {
         raw += raw_size;
         f.resize(raw, 0);
     }
+    debug_assert_eq!(raw, rdata_raw + align(sections[4].2.len(), fa));
+    // A version resource, written by the resource editor into a new .rsrc section.
+    if !tight && g.chance(96) {
+        use crate::pe::resources::{self, ResId};
+        let company = g.name("Co");
+        let mut root = resources::ResDir::default();
+        resources::insert(&mut root, &ResId::Id(16), &ResId::Id(1), &ResId::Id(1033), version_info(&company));
+        if resources::apply(&mut f, &root).is_ok() {
+            exp.company = Some(company);
+        }
+    }
     (f, exp)
+}
+
+/// A Rich header ("DanS", tool entries, "Rich", key), every word XORed with the key.
+fn rich_header(g: &mut Gen) -> Vec<u8> {
+    let key = g.u32() | 1;
+    let mut words = vec![0x536E_6144 ^ key, key, key, key];
+    for _ in 0..1 + g.below(6) {
+        words.push(g.u32() ^ key);
+        words.push((1 + g.below(200) as u32) ^ key);
+    }
+    let mut b: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+    b.extend_from_slice(b"Rich");
+    b.extend(key.to_le_bytes());
+    b
+}
+
+/// A VS_VERSIONINFO with one CompanyName string.
+fn version_info(company: &str) -> Vec<u8> {
+    fn block(key: &str, value: &[u8], text: bool, children: &[Vec<u8>]) -> Vec<u8> {
+        let mut b = vec![0u8; 6];
+        b.extend(key.encode_utf16().chain([0]).flat_map(u16::to_le_bytes));
+        b.resize(align(b.len(), 4), 0);
+        b.extend_from_slice(value);
+        for c in children {
+            b.resize(align(b.len(), 4), 0);
+            b.extend_from_slice(c);
+        }
+        let len = b.len() as u64;
+        LE.put(&mut b, 0, len, 2);
+        LE.put(&mut b, 2, if text { value.len() / 2 } else { value.len() } as u64, 2);
+        LE.put(&mut b, 4, text as u64, 2);
+        b
+    }
+    let utf16z = |s: &str| -> Vec<u8> { s.encode_utf16().chain([0]).flat_map(u16::to_le_bytes).collect() };
+    let mut fixed = vec![0u8; 52];
+    LE.put(&mut fixed, 0, 0xFEEF_04BD, 4);
+    LE.put(&mut fixed, 4, 0x1_0000, 4);
+    let string = block("CompanyName", &utf16z(company), true, &[]);
+    let table = block("040904B0", &[], true, &[string]);
+    let sfi = block("StringFileInfo", &[], true, &[table]);
+    block("VS_VERSION_INFO", &fixed, false, &[sfi])
+}
+
+/// ECMA-335 metadata placed at `rva`: a Module, one TypeDef and a few
+/// MethodDefs whose tiny-format IL bodies follow the metadata. Returns the
+/// bytes and the method names.
+fn dotnet_metadata(g: &mut Gen, rva: usize) -> (Vec<u8>, Vec<String>) {
+    let methods: Vec<String> = (0..1 + g.below(4)).map(|i| format!("{}{i}", g.name("M"))).collect();
+    // Heaps. Every index fits in 2 bytes (HeapSizes 0).
+    let mut strings = vec![0u8];
+    let module = cstr(&mut strings, "fuzz.dll");
+    let ty = cstr(&mut strings, "Program");
+    let ns = cstr(&mut strings, "Fuzz");
+    let names: Vec<usize> = methods.iter().map(|m| cstr(&mut strings, m)).collect();
+    strings.resize(align(strings.len(), 4), 0);
+    let blob = vec![0u8, 3, 0x00, 0x00, 0x01, 0]; // index 1: default, 0 params, void
+    let guid = g.bytes(16);
+    let us = vec![0u8; 4];
+    // #~: header, row counts, then Module (10 bytes), TypeDef (14), MethodDef (14) rows.
+    let mut t = Vec::new();
+    t.extend(0u32.to_le_bytes());
+    t.extend([2, 0, 0, 1]);
+    t.extend((1u64 | 1 << 2 | 1 << 6).to_le_bytes()); // valid: Module, TypeDef, MethodDef
+    t.extend(0u64.to_le_bytes());
+    for n in [1u32, 1, methods.len() as u32] {
+        t.extend(n.to_le_bytes());
+    }
+    for v in [0u16, module as u16, 1, 0, 0] {
+        t.extend(v.to_le_bytes());
+    }
+    t.extend(0x0010_0001u32.to_le_bytes()); // public, before field init
+    for v in [ty as u16, ns as u16, 0, 1, 1] {
+        t.extend(v.to_le_bytes());
+    }
+    // Method bodies go after the metadata; their RVAs are filled in below.
+    let body_rows = t.len();
+    for n in &names {
+        t.extend(0u32.to_le_bytes());
+        for v in [0u16, 0x0096, *n as u16, 1, 1] {
+            t.extend(v.to_le_bytes());
+        }
+    }
+    t.resize(align(t.len(), 4), 0);
+    let streams: [(&str, &Vec<u8>); 5] = [("#~", &t), ("#Strings", &strings), ("#US", &us), ("#GUID", &guid), ("#Blob", &blob)];
+    let version = b"v4.0.30319\0\0";
+    let mut md = Vec::new();
+    md.extend(0x424A_5342u32.to_le_bytes());
+    md.extend([1, 0, 1, 0]);
+    md.extend(0u32.to_le_bytes());
+    md.extend((version.len() as u32).to_le_bytes());
+    md.extend_from_slice(version);
+    md.extend(0u16.to_le_bytes());
+    md.extend((streams.len() as u16).to_le_bytes());
+    let header_len = md.len() + streams.iter().map(|(n, _)| 8 + align(n.len() + 1, 4)).sum::<usize>();
+    let mut at = header_len;
+    let mut table_at = 0;
+    for (name, data) in &streams {
+        if *name == "#~" {
+            table_at = at;
+        }
+        md.extend((at as u32).to_le_bytes());
+        md.extend((data.len() as u32).to_le_bytes());
+        md.extend_from_slice(name.as_bytes());
+        md.push(0);
+        md.resize(align(md.len(), 4), 0);
+        at += data.len();
+    }
+    for (_, data) in &streams {
+        md.extend_from_slice(data);
+    }
+    // Tiny IL bodies: nop..., ret.
+    for i in 0..methods.len() {
+        let body = md.len();
+        let code_len = 1 + g.below(6);
+        md.push((code_len as u8) << 2 | 2);
+        md.extend(std::iter::repeat_n(0u8, code_len - 1));
+        md.push(0x2A);
+        let row = table_at + body_rows + 14 * i;
+        LE.put(&mut md, row, (rva + body) as u64, 4);
+    }
+    (md, methods)
 }
 
 // --- ELF --------------------------------------------------------------------
 
+/// The GNU symbol hash (DT_GNU_HASH).
+fn gnu_hash(name: &str) -> u32 {
+    name.bytes().fold(5381u32, |h, c| h.wrapping_mul(33).wrapping_add(c as u32))
+}
+
+/// The System V symbol hash, used by version records.
+fn elf_hash(name: &str) -> u32 {
+    let mut h = 0u32;
+    for c in name.bytes() {
+        h = (h << 4).wrapping_add(c as u32);
+        let g = h & 0xf000_0000;
+        if g != 0 {
+            h ^= g >> 24;
+        }
+        h &= !g;
+    }
+    h
+}
+
+/// One section of a built ELF file. `link` is a section index.
+struct ElfSec {
+    ty: u32,
+    flags: u64,
+    data: Vec<u8>,
+    link: usize,
+    info: u64,
+    entsize: u64,
+}
+
 /// An ELF executable or shared object (32 or 64 bit, either byte order) with
-/// a dynamic section, dynamic symbols and section headers.
+/// a dynamic section and dynamic symbols, and optionally a GNU hash table,
+/// symbol versions, dynamic and static relocations, a static symbol table,
+/// a build ID note and a .comment section.
 pub fn elf(g: &mut Gen) -> (Vec<u8>, Expect) {
     let is64 = g.chance(170);
     let w = W { be: g.chance(40) };
     let p = if is64 { 8 } else { 4 };
-    let base: u64 = if is64 { 0x40_0000 } else { 0x8048000 };
+    let base: u64 = if is64 { 0x40_0000 } else { 0x804_8000 };
     let mut exp = Expect::default();
-    let (ehsize, phsize, shsize, dynsize, symsize) = if is64 { (64, 56, 64, 16, 24) } else { (52, 32, 40, 8, 16) };
+    let (ehsize, phsize, shsize, dynsize, symsize, relasize) = if is64 { (64, 56, 64, 16, 24, 24) } else { (52, 32, 40, 8, 16, 12) };
 
-    // Strings first, so their offsets are known.
-    let mut dynstr = vec![0u8];
+    // Every choice is drawn here, before the two layout passes below.
     let needed: Vec<String> = (0..g.below(5)).map(|i| format!("lib{}{i}.so", g.name(""))).collect();
-    let needed_off: Vec<usize> = needed.iter().map(|n| cstr(&mut dynstr, n)).collect();
     let soname = g.chance(128).then(|| format!("lib{}.so.1", g.name("")));
-    let soname_off = soname.as_ref().map(|s| cstr(&mut dynstr, s));
     let runpath = g.chance(100).then(|| format!("$ORIGIN/{}", g.name("")));
-    let runpath_off = runpath.as_ref().map(|s| cstr(&mut dynstr, s));
     let syms: Vec<String> = (0..g.below(6)).map(|i| format!("{}{i}", g.name("s"))).collect();
-    let sym_off: Vec<usize> = syms.iter().map(|s| cstr(&mut dynstr, s)).collect();
-
-    let nph = 2;
-    let text_off = ehsize + nph * phsize;
     let text = g.code();
-    let dynsym_off = align(text_off + text.len(), 8);
-    let nsym = syms.len() + 1;
-    let dynstr_off = dynsym_off + nsym * symsize;
-    let dynamic_off = align(dynstr_off + dynstr.len(), 8);
-    let mut tags: Vec<(u64, u64)> = needed_off.iter().map(|o| (1, *o as u64)).collect();
-    if let Some(o) = soname_off {
-        tags.push((14, o as u64));
-    }
-    if let Some(o) = runpath_off {
-        tags.push((29, o as u64));
-    }
-    tags.extend([(5, base + dynstr_off as u64), (10, dynstr.len() as u64), (6, base + dynsym_off as u64), (11, symsize as u64), (0, 0)]);
-    let shstr_off = dynamic_off + tags.len() * dynsize;
-    let mut shstr = vec![0u8];
-    let names: Vec<usize> = [".text", ".dynsym", ".dynstr", ".dynamic", ".shstrtab"].iter().map(|n| cstr(&mut shstr, n)).collect();
-    let sh_off = align(shstr_off + shstr.len(), 8);
-    let nsh = 6;
-    let end = sh_off + nsh * shsize;
-
-    let mut f = vec![0u8; end];
-    f[..4].copy_from_slice(b"\x7fELF");
-    f[4] = if is64 { 2 } else { 1 };
-    f[5] = if w.be { 2 } else { 1 };
-    f[6] = 1;
+    let sym_at: Vec<usize> = syms.iter().map(|_| g.below(text.len())).collect();
+    let with_hash = g.chance(160);
+    let with_versions = !needed.is_empty() && !syms.is_empty() && g.chance(140);
+    let versioned: Vec<bool> = syms.iter().map(|_| g.chance(128)).collect();
+    let rela_dyn: Vec<(usize, u64)> = (0..if g.chance(128) { 1 + g.below(4) } else { 0 }).map(|_| (g.below(text.len()), g.below(0x100) as u64)).collect();
+    let with_symtab = g.chance(150);
+    let rela_text: Vec<(usize, usize)> =
+        if with_symtab { (0..g.below(4)).map(|_| (g.below(text.len()), g.below(syms.len() + 2))).collect() } else { Vec::new() };
+    let with_note = g.chance(128);
+    let build_id = g.bytes(20);
+    let with_comment = g.chance(128);
     let e_type = if g.chance(128) { 3 } else { 2 };
     let machine = match (is64, g.below(3)) {
         (true, 0) => 183,
@@ -368,7 +597,217 @@ pub fn elf(g: &mut Gen) -> (Vec<u8>, Expect) {
         (false, 0) => 40,
         (false, _) => 3,
     };
-    let entry = base + (text_off + g.below(text.len())) as u64;
+    let entry_at = g.below(text.len());
+    const VERSION: &str = "GLIBC_2.2.5";
+
+    let mut dynstr = vec![0u8];
+    let needed_off: Vec<usize> = needed.iter().map(|n| cstr(&mut dynstr, n)).collect();
+    let soname_off = soname.as_ref().map(|s| cstr(&mut dynstr, s));
+    let runpath_off = runpath.as_ref().map(|s| cstr(&mut dynstr, s));
+    let sym_off: Vec<usize> = syms.iter().map(|s| cstr(&mut dynstr, s)).collect();
+    let version_off = with_versions.then(|| cstr(&mut dynstr, VERSION));
+
+    // Section indexes, in file order; .shstrtab is last.
+    let mut order: Vec<&'static str> = vec![".text", ".dynsym", ".dynstr"];
+    if with_hash {
+        order.push(".gnu.hash");
+    }
+    if with_versions {
+        order.extend([".gnu.version", ".gnu.version_r"]);
+    }
+    if !rela_dyn.is_empty() {
+        order.push(".rela.dyn");
+    }
+    order.push(".dynamic");
+    if with_note {
+        order.push(".note.gnu.build-id");
+    }
+    if with_comment {
+        order.push(".comment");
+    }
+    if with_symtab {
+        order.extend([".symtab", ".strtab"]);
+        if !rela_text.is_empty() {
+            order.push(".rela.text");
+        }
+    }
+    order.push(".shstrtab");
+    let idx = |n: &str| order.iter().position(|o| *o == n).map_or(0, |i| i + 1);
+
+    // Builds every section; `addr` gives a section's address (0 in the first pass).
+    let build = |addr: &dyn Fn(&str) -> u64| -> Vec<ElfSec> {
+        let text_addr = addr(".text");
+        let mut secs = Vec::new();
+        let mut s = |_name: &'static str, ty, flags, data, link: &str, info, entsize| {
+            secs.push(ElfSec { ty, flags, data, link: idx(link), info, entsize });
+        };
+        let sym = |out: &mut Vec<u8>, name: u64, info: u8, shndx: u64, value: u64| {
+            let o = out.len();
+            out.resize(o + symsize, 0);
+            w.put(out, o, name, 4);
+            if is64 {
+                out[o + 4] = info;
+                w.put(out, o + 6, shndx, 2);
+                w.put(out, o + 8, value, 8);
+            } else {
+                w.put(out, o + 4, value, 4);
+                out[o + 12] = info;
+                w.put(out, o + 14, shndx, 2);
+            }
+        };
+        s(".text", 1, 6, text.clone(), "", 0, 0);
+        let mut dynsym = vec![0u8; symsize];
+        for (i, o) in sym_off.iter().enumerate() {
+            sym(&mut dynsym, *o as u64, 0x12, idx(".text") as u64, text_addr + sym_at[i] as u64);
+        }
+        s(".dynsym", 11, 2, dynsym, ".dynstr", 1, symsize as u64);
+        s(".dynstr", 3, 2, dynstr.clone(), "", 0, 0);
+        if with_hash {
+            // One bucket holding every symbol from index 1, a one word bloom filter.
+            let shift = 6u32;
+            let bits = (8 * p) as u32;
+            let mut bloom = 0u64;
+            for n in &syms {
+                let h = gnu_hash(n);
+                bloom |= 1 << (h % bits) | 1 << ((h >> shift) % bits);
+            }
+            let mut d = Vec::new();
+            for v in [1u64, 1, 1, shift as u64] {
+                let o = d.len();
+                w.put(&mut d, o, v, 4);
+            }
+            let o = d.len();
+            w.put(&mut d, o, bloom, p);
+            let o = d.len();
+            w.put(&mut d, o, if syms.is_empty() { 0 } else { 1 }, 4);
+            for (i, n) in syms.iter().enumerate() {
+                let last = i + 1 == syms.len();
+                let o = d.len();
+                w.put(&mut d, o, (gnu_hash(n) & !1 | last as u32) as u64, 4);
+            }
+            s(".gnu.hash", 0x6fff_fff6, 2, d, ".dynsym", 0, 0);
+        }
+        if let Some(vo) = version_off {
+            let mut versym = vec![0u8; 2];
+            for v in &versioned {
+                let o = versym.len();
+                w.put(&mut versym, o, if *v { 2 } else { 1 }, 2);
+            }
+            s(".gnu.version", 0x6fff_ffff, 2, versym, ".dynsym", 0, 2);
+            let mut need = vec![0u8; 32];
+            w.put(&mut need, 0, 1, 2);
+            w.put(&mut need, 2, 1, 2);
+            w.put(&mut need, 4, needed_off[0] as u64, 4);
+            w.put(&mut need, 8, 16, 4);
+            w.put(&mut need, 16, elf_hash(VERSION) as u64, 4);
+            w.put(&mut need, 22, 2, 2);
+            w.put(&mut need, 24, vo as u64, 4);
+            s(".gnu.version_r", 0x6fff_fffe, 2, need, ".dynstr", 1, 0);
+        }
+        let rela = |out: &mut Vec<u8>, off: u64, sym: u64, ty: u64, addend: u64| {
+            let o = out.len();
+            out.resize(o + relasize, 0);
+            w.put(out, o, off, p);
+            w.put(out, o + p, if is64 { sym << 32 | ty } else { sym << 8 | ty }, p);
+            w.put(out, o + 2 * p, addend, p);
+        };
+        if !rela_dyn.is_empty() {
+            let mut d = Vec::new();
+            for (at, addend) in &rela_dyn {
+                // R_X86_64_RELATIVE and R_386_RELATIVE are both 8.
+                rela(&mut d, text_addr + *at as u64, 0, 8, *addend);
+            }
+            s(".rela.dyn", 4, 2, d, ".dynsym", 0, relasize as u64);
+        }
+        let mut tags: Vec<(u64, u64)> = needed_off.iter().map(|o| (1, *o as u64)).collect();
+        if let Some(o) = soname_off {
+            tags.push((14, o as u64));
+        }
+        if let Some(o) = runpath_off {
+            tags.push((29, o as u64));
+        }
+        tags.extend([(5, addr(".dynstr")), (10, dynstr.len() as u64), (6, addr(".dynsym")), (11, symsize as u64)]);
+        if with_hash {
+            tags.push((0x6fff_fef5, addr(".gnu.hash")));
+        }
+        if with_versions {
+            tags.extend([(0x6fff_fff0, addr(".gnu.version")), (0x6fff_fffe, addr(".gnu.version_r")), (0x6fff_ffff, 1)]);
+        }
+        if !rela_dyn.is_empty() {
+            tags.extend([(7, addr(".rela.dyn")), (8, (rela_dyn.len() * relasize) as u64), (9, relasize as u64)]);
+        }
+        tags.push((0, 0));
+        let mut d = Vec::new();
+        for (tag, val) in tags {
+            let o = d.len();
+            w.put(&mut d, o, tag, p);
+            w.put(&mut d, o + p, val, p);
+        }
+        s(".dynamic", 6, 3, d, ".dynstr", 0, dynsize as u64);
+        if with_note {
+            let mut d = vec![0u8; 16];
+            w.put(&mut d, 0, 4, 4);
+            w.put(&mut d, 4, 20, 4);
+            w.put(&mut d, 8, 3, 4); // NT_GNU_BUILD_ID
+            d[12..16].copy_from_slice(b"GNU\0");
+            d.extend_from_slice(&build_id);
+            s(".note.gnu.build-id", 7, 2, d, "", 0, 0);
+        }
+        if with_comment {
+            s(".comment", 1, 0x30, b"GCC: (fuzzgen) 1.0\0".to_vec(), "", 0, 1);
+        }
+        if with_symtab {
+            let mut strtab = vec![0u8];
+            let mut symtab = vec![0u8; symsize];
+            sym(&mut symtab, 0, 0x03, idx(".text") as u64, text_addr); // section symbol
+            let file = cstr(&mut strtab, "fuzz.c");
+            sym(&mut symtab, file as u64, 0x04, 0xfff1, 0);
+            for (i, n) in syms.iter().enumerate() {
+                let o = cstr(&mut strtab, n);
+                sym(&mut symtab, o as u64, 0x12, idx(".text") as u64, text_addr + sym_at[i] as u64);
+            }
+            s(".symtab", 2, 0, symtab, ".strtab", 3, symsize as u64);
+            s(".strtab", 3, 0, strtab, "", 0, 0);
+            if !rela_text.is_empty() {
+                let mut d = Vec::new();
+                for (at, sym) in &rela_text {
+                    // R_X86_64_PC32 and R_386_PC32 are both 2.
+                    rela(&mut d, *at as u64, *sym as u64, 2, 0);
+                }
+                s(".rela.text", 4, 0x40, d, ".symtab", idx(".text") as u64, relasize as u64);
+            }
+        }
+        secs
+    };
+
+    // First pass for the sizes, then the layout, then the real contents.
+    let nph = if with_note { 3 } else { 2 };
+    let names = {
+        let mut shstr = vec![0u8];
+        let offs: Vec<usize> = order.iter().map(|n| cstr(&mut shstr, n)).collect();
+        (shstr, offs)
+    };
+    let sizes: Vec<usize> = build(&|_| 0).iter().map(|s| s.data.len()).chain([names.0.len()]).collect();
+    let mut offs = Vec::new();
+    let mut at = ehsize + nph * phsize;
+    for sz in &sizes {
+        at = align(at, 8);
+        offs.push(at);
+        at += sz;
+    }
+    let sh_off = align(at, 8);
+    let nsh = order.len() + 1;
+    let end = sh_off + nsh * shsize;
+    let addr = |n: &str| order.iter().position(|o| *o == n).map_or(0, |i| base + offs[i] as u64);
+    let mut secs = build(&addr);
+    secs.push(ElfSec { ty: 3, flags: 0, data: names.0.clone(), link: 0, info: 0, entsize: 0 });
+
+    let mut f = vec![0u8; end];
+    f[..4].copy_from_slice(b"\x7fELF");
+    f[4] = if is64 { 2 } else { 1 };
+    f[5] = if w.be { 2 } else { 1 };
+    f[6] = 1;
+    let entry = addr(".text") + entry_at as u64;
     exp.entry = Some(entry);
     w.put(&mut f, 16, e_type, 2);
     w.put(&mut f, 18, machine, 2);
@@ -382,9 +821,9 @@ pub fn elf(g: &mut Gen) -> (Vec<u8>, Expect) {
     w.put(&mut f, h + 4, nph as u64, 2);
     w.put(&mut f, h + 6, shsize as u64, 2);
     w.put(&mut f, h + 8, nsh as u64, 2);
-    w.put(&mut f, h + 10, 5, 2); // e_shstrndx
+    w.put(&mut f, h + 10, order.len() as u64, 2); // e_shstrndx: the last section
 
-    // Program headers: one PT_LOAD for everything, then PT_DYNAMIC.
+    // Program headers: one PT_LOAD for everything, PT_DYNAMIC, and PT_NOTE.
     let phdr = |f: &mut Vec<u8>, i: usize, ty: u64, flags: u64, off: usize, size: usize| {
         let o = ehsize + i * phsize;
         w.put(f, o, ty, 4);
@@ -407,66 +846,46 @@ pub fn elf(g: &mut Gen) -> (Vec<u8>, Expect) {
         }
     };
     phdr(&mut f, 0, 1, 7, 0, end);
-    phdr(&mut f, 1, 2, 6, dynamic_off, tags.len() * dynsize);
-
-    f[text_off..text_off + text.len()].copy_from_slice(&text);
-    for (i, o) in sym_off.iter().enumerate() {
-        let s = dynsym_off + (i + 1) * symsize;
-        w.put(&mut f, s, *o as u64, 4);
-        let value = base + (text_off + g.below(text.len())) as u64;
-        if is64 {
-            f[s + 4] = 0x12;
-            w.put(&mut f, s + 6, 1, 2);
-            w.put(&mut f, s + 8, value, 8);
-        } else {
-            w.put(&mut f, s + 4, value, 4);
-            f[s + 12] = 0x12;
-            w.put(&mut f, s + 14, 1, 2);
-        }
+    let sec_of = |n: &str| order.iter().position(|o| *o == n).map(|i| (offs[i], sizes[i]));
+    if let Some((off, size)) = sec_of(".dynamic") {
+        phdr(&mut f, 1, 2, 6, off, size);
     }
-    f[dynstr_off..dynstr_off + dynstr.len()].copy_from_slice(&dynstr);
-    for (i, (tag, val)) in tags.iter().enumerate() {
-        w.put(&mut f, dynamic_off + i * dynsize, *tag, p);
-        w.put(&mut f, dynamic_off + i * dynsize + p, *val, p);
+    if let Some((off, size)) = sec_of(".note.gnu.build-id") {
+        phdr(&mut f, 2, 4, 4, off, size);
     }
-    f[shstr_off..shstr_off + shstr.len()].copy_from_slice(&shstr);
 
-    // Section headers: null, .text, .dynsym, .dynstr, .dynamic, .shstrtab.
-    let secs: [(usize, u64, u64, usize, usize, u64, u64, u64); 5] = [
-        (names[0], 1, 6, text_off, text.len(), 0, 0, 16),
-        (names[1], 11, 2, dynsym_off, nsym * symsize, 3, 1, symsize as u64),
-        (names[2], 3, 2, dynstr_off, dynstr.len(), 0, 0, 0),
-        (names[3], 6, 3, dynamic_off, tags.len() * dynsize, 3, 0, dynsize as u64),
-        (names[4], 3, 0, shstr_off, shstr.len(), 0, 0, 0),
-    ];
-    for (i, (name, ty, flags, off, size, link, info, entsize)) in secs.iter().enumerate() {
+    for (i, sec) in secs.iter().enumerate() {
+        let off = offs[i];
+        f[off..off + sec.data.len()].copy_from_slice(&sec.data);
         let s = sh_off + (i + 1) * shsize;
-        let addr = if *flags & 2 != 0 { base + *off as u64 } else { 0 };
-        w.put(&mut f, s, *name as u64, 4);
-        w.put(&mut f, s + 4, *ty, 4);
+        let a = if sec.flags & 2 != 0 { base + off as u64 } else { 0 };
+        w.put(&mut f, s, names.1[i] as u64, 4);
+        w.put(&mut f, s + 4, sec.ty as u64, 4);
+        let fields = [sec.flags, a, off as u64, sec.data.len() as u64];
         if is64 {
-            w.put(&mut f, s + 8, *flags, 8);
-            w.put(&mut f, s + 16, addr, 8);
-            w.put(&mut f, s + 24, *off as u64, 8);
-            w.put(&mut f, s + 32, *size as u64, 8);
-            w.put(&mut f, s + 40, *link, 4);
-            w.put(&mut f, s + 44, *info, 4);
-            w.put(&mut f, s + 48, 8, 8);
-            w.put(&mut f, s + 56, *entsize, 8);
+            for (k, v) in fields.iter().enumerate() {
+                w.put(&mut f, s + 8 + 8 * k, *v, 8);
+            }
+            w.put(&mut f, s + 40, sec.link as u64, 4);
+            w.put(&mut f, s + 44, sec.info, 4);
+            // Notes are 4 byte aligned on 64-bit files too; readers pad the fields to sh_addralign.
+            w.put(&mut f, s + 48, if sec.ty == 7 { 4 } else { 8 }, 8);
+            w.put(&mut f, s + 56, sec.entsize, 8);
         } else {
-            w.put(&mut f, s + 8, *flags, 4);
-            w.put(&mut f, s + 12, addr, 4);
-            w.put(&mut f, s + 16, *off as u64, 4);
-            w.put(&mut f, s + 20, *size as u64, 4);
-            w.put(&mut f, s + 24, *link, 4);
-            w.put(&mut f, s + 28, *info, 4);
+            for (k, v) in fields.iter().enumerate() {
+                w.put(&mut f, s + 8 + 4 * k, *v, 4);
+            }
+            w.put(&mut f, s + 24, sec.link as u64, 4);
+            w.put(&mut f, s + 28, sec.info, 4);
             w.put(&mut f, s + 32, 4, 4);
-            w.put(&mut f, s + 36, *entsize, 4);
+            w.put(&mut f, s + 36, sec.entsize, 4);
         }
     }
     exp.needed = needed;
     exp.soname = soname;
     exp.runpath = runpath;
+    exp.gnu_hashed = with_hash.then_some(syms.len());
+    exp.versioned = with_versions;
     (f, exp)
 }
 
@@ -476,6 +895,41 @@ const LC_SEGMENT_64: u32 = 0x19;
 const LC_SYMTAB: u32 = 0x2;
 const LC_DYLD_INFO_ONLY: u32 = 0x8000_0022;
 const LC_MAIN: u32 = 0x8000_0028;
+const LC_CODE_SIGNATURE: u32 = 0x1D;
+
+/// An ad hoc code signature over `code`: a SuperBlob holding one CodeDirectory
+/// (version 0x20400, SHA-256, 4 KB pages) with the hash of every page.
+fn code_signature(code: &[u8], ident: &str) -> Vec<u8> {
+    use sha2::{Digest, Sha256};
+    let be = W { be: true };
+    let pages = code.len().div_ceil(0x1000);
+    let hash_off = 88 + ident.len() + 1;
+    let cd_len = hash_off + 32 * pages;
+    let mut cd = vec![0u8; 88];
+    be.put(&mut cd, 0, 0xfade_0c02, 4);
+    be.put(&mut cd, 4, cd_len as u64, 4);
+    be.put(&mut cd, 8, 0x20400, 4);
+    be.put(&mut cd, 12, 0x2, 4); // adhoc
+    be.put(&mut cd, 16, hash_off as u64, 4);
+    be.put(&mut cd, 20, 88, 4); // identOffset
+    be.put(&mut cd, 28, pages as u64, 4);
+    be.put(&mut cd, 32, code.len() as u64, 4); // codeLimit
+    cd[36] = 32; // hashSize
+    cd[37] = 2; // SHA-256
+    cd[39] = 12; // 4 KB pages
+    cd.extend_from_slice(ident.as_bytes());
+    cd.push(0);
+    for page in code.chunks(0x1000) {
+        cd.extend_from_slice(&Sha256::digest(page));
+    }
+    let mut sb = vec![0u8; 20];
+    be.put(&mut sb, 0, 0xfade_0cc0, 4);
+    be.put(&mut sb, 4, (20 + cd.len()) as u64, 4);
+    be.put(&mut sb, 8, 1, 4);
+    be.put(&mut sb, 16, 20, 4); // index 0: type 0 (CodeDirectory) at offset 20
+    sb.extend_from_slice(&cd);
+    sb
+}
 
 /// A 64-bit Mach-O executable with __TEXT, __LINKEDIT, dylibs, rpaths, a
 /// symbol table and classic bind opcodes, optionally inside a universal file.
@@ -558,10 +1012,11 @@ pub fn macho(g: &mut Gen) -> (Vec<u8>, Expect) {
         bind.extend(g.bytes(n));
     }
     bind.push(0);
+    let signed = g.chance(128);
 
     // Commands in their final order, with placeholder offsets for the sizes.
     let padding = align(g.below(0x400), 8);
-    let cmd_sizes = 72 + (72 + 80) + 72 + 48 + 24 + 24 + paths.iter().map(|(c, p)| path_cmd(*c, p).len()).sum::<usize>();
+    let cmd_sizes = 72 + (72 + 80) + 72 + 48 + 24 + 24 + if signed { 16 } else { 0 } + paths.iter().map(|(c, p)| path_cmd(*c, p).len()).sum::<usize>();
     let text_off = align(32 + cmd_sizes + padding, 16);
     let text_end = text_off + text.len();
     let link_off = align(text_end, 0x1000);
@@ -571,6 +1026,12 @@ pub fn macho(g: &mut Gen) -> (Vec<u8>, Expect) {
     let mut strtab = vec![0u8, 0];
     let strx: Vec<usize> = sym_names.iter().map(|s| cstr(&mut strtab, s)).collect();
     let end = str_off + strtab.len();
+    // An ad hoc signature at the end of __LINKEDIT hashes every page before it.
+    const IDENT: &str = "gen.fuzz";
+    let sig_off = align(end, 16);
+    let pages = sig_off.div_ceil(0x1000);
+    let sig_len = 20 + 88 + IDENT.len() + 1 + 32 * pages;
+    let link_end = if signed { sig_off + sig_len } else { end };
 
     cmds.push(seg("__PAGEZERO", 0, vm, 0, 0, 0, &[]));
     cmds.push(seg(
@@ -582,7 +1043,7 @@ pub fn macho(g: &mut Gen) -> (Vec<u8>, Expect) {
         5,
         &[("__text", vm + text_off as u64, text.len() as u64, text_off as u64)],
     ));
-    cmds.push(seg("__LINKEDIT", vm + link_off as u64, align(end - link_off, 0x1000) as u64, link_off as u64, (end - link_off) as u64, 1, &[]));
+    cmds.push(seg("__LINKEDIT", vm + link_off as u64, align(link_end - link_off, 0x1000) as u64, link_off as u64, (link_end - link_off) as u64, 1, &[]));
     let mut dyld = vec![0u8; 48];
     LE.put(&mut dyld, 0, LC_DYLD_INFO_ONLY as u64, 4);
     LE.put(&mut dyld, 4, 48, 4);
@@ -605,6 +1066,14 @@ pub fn macho(g: &mut Gen) -> (Vec<u8>, Expect) {
     cmds.push(main);
     for (c, p) in &paths {
         cmds.push(path_cmd(*c, p));
+    }
+    if signed {
+        let mut c = vec![0u8; 16];
+        LE.put(&mut c, 0, LC_CODE_SIGNATURE as u64, 4);
+        LE.put(&mut c, 4, 16, 4);
+        LE.put(&mut c, 8, sig_off as u64, 4);
+        LE.put(&mut c, 12, sig_len as u64, 4);
+        cmds.push(c);
     }
 
     let mut f = vec![0u8; 32];
@@ -633,6 +1102,13 @@ pub fn macho(g: &mut Gen) -> (Vec<u8>, Expect) {
     }
     f.resize(str_off, 0);
     f.extend_from_slice(&strtab);
+    if signed {
+        f.resize(sig_off, 0);
+        let sig = code_signature(&f, IDENT);
+        debug_assert_eq!(sig.len(), sig_len);
+        f.extend_from_slice(&sig);
+    }
+    exp.signed = signed;
     exp.entry = Some(vm + entry_off as u64);
     exp.paths = paths;
 

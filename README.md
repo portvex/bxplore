@@ -302,15 +302,15 @@ a nightly toolchain and `cargo install cargo-fuzz`.
 
 | Target | Covers |
 | --- | --- |
-| `parse_any` | detection, full parse, text dump, every editable field, disassembly at the entry point |
+| `parse_any` | detection, full parse, text dump, every editable field, disassembly at the entry point with symbol and branch annotation |
 | `parse_each` | the PE, ELF and Mach-O parsers individually, strings |
 | `pe_edit` | sections, imports, exports, resources, relocations, TLS callbacks, delay imports, header fix-ups, then re-parse |
 | `resource_previews` | version info, string table, icon group and image decoders |
 | `elf_edit` | the ELF dynamic section and section header editors, then re-parse |
 | `macho_edit` | the Mach-O load command editor, then re-parse |
-| `queries` | search, offset lookup and file comparison |
+| `queries` | search, offset lookup, file comparison, and the patch formats: the difference runs, and a file name taken from the input must stay inside a comment of the generated Python script |
 | `decoders` | Authenticode, Mach-O code signature and dynamic linking data, .NET metadata, signatures and IL, fed directly |
-| `structured` | builds a mostly valid PE, ELF or Mach-O file from the input (`src/fuzzgen.rs`), checks that the parsers read back exactly what was built (entry point, imports, exports, relocations, DT_NEEDED, SONAME, RUNPATH, dylib and rpath commands), then edits it |
+| `structured` | builds a mostly valid PE, ELF or Mach-O file from the input (`src/fuzzgen.rs`), checks that the parsers read back exactly what was built, then edits it. PE: imports, exports, relocations, TLS callbacks, debug directory with PDB path, Rich header, .NET metadata and method bodies, version resource, headers with no room left. ELF: DT_NEEDED, SONAME, RUNPATH, GNU hash table, symbol versions, dynamic and static relocations, symbol tables, build ID note. Mach-O: dylib and rpath commands, bind opcodes, an ad hoc code signature whose page hashes must verify, universal wrapper |
 | `differential` | compares bxplore with the `object` crate on built and raw files: format, entry point, sections and PE imports must agree |
 
 ```

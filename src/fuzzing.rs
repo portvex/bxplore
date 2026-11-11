@@ -39,8 +39,11 @@ pub fn parse_any(data: &[u8]) {
         && let Ok(off) = usize::try_from(off)
     {
         let end = data.len().min(off.saturating_add(64));
-        if off < end {
-            let _ = analysis::disasm(&data[off..end], parsed.arch, e, 16);
+        if off < end
+            && let Ok(mut insns) = analysis::disasm(&data[off..end], parsed.arch, e, 16)
+        {
+            // Symbol names and branch targets, as the disassembler view shows them.
+            analysis::annotate(&mut insns, &parsed, data);
         }
     }
     debug_assert!(parsed.format != Format::Unknown || parsed.maps.is_empty());
@@ -317,6 +320,27 @@ pub fn queries(data: &[u8]) {
     other.truncate(data.len().saturating_sub(data.len() / 7));
     let b = analysis::parse(&other);
     let _ = query::compare(&parsed, data, &b, &other);
+    patches(data, &other);
+}
+
+/// The patch formats for two versions of a file. The file name comes from the
+/// file and is untrusted: whatever it holds must stay inside a comment.
+fn patches(a: &[u8], b: &[u8]) {
+    let common = a.len().min(b.len());
+    for &(start, len) in &query::diff_runs(a, b) {
+        assert!(len > 0 && start + len <= common, "a run lies outside the common part");
+        assert!(a[start..start + len].iter().zip(&b[start..start + len]).all(|(x, y)| x != y), "a run holds equal bytes");
+    }
+    let name = String::from_utf8_lossy(&a[..a.len().min(48)]);
+    for (hostile, plain) in [(query::patch_python(&name, a, b), query::patch_python("x", a, b)), (query::patch_text(&name, a, b), query::patch_text("x", a, b))]
+    {
+        let (h, p): (Vec<&str>, Vec<&str>) = (hostile.lines().collect(), plain.lines().collect());
+        assert_eq!(h.len(), p.len(), "the file name changed the number of lines");
+        for (x, y) in h.iter().zip(&p) {
+            assert!(x == y || x.starts_with('#'), "the file name got out of a comment: {x:?}");
+        }
+        assert!(!hostile.contains('\r'), "a carriage return ends a line for Python");
+    }
 }
 
 /// Decoders used by the resource previews.
@@ -379,6 +403,19 @@ fn check_built(kind: &Kind, file: &[u8], exp: &Expect) {
             let mut relocs = edit::parse_relocs(file, &pe);
             relocs.sort();
             assert_eq!(relocs, exp.relocs, "relocations");
+            let tls = edit::tls_callbacks(file, &pe).map(|t| t.1).unwrap_or_default();
+            assert_eq!(tls, exp.tls_callbacks, "TLS callbacks");
+            let mut dump = String::new();
+            analysis::dump(&parsed.root, 0, &mut dump);
+            for want in &exp.shows {
+                assert!(dump.contains(want.as_str()), "the dump must show {want:?}");
+            }
+            if let Some(company) = &exp.company {
+                // The version text is a preview, not part of the dump: read it through the resource tree.
+                let root = resources::parse(file, &pe).expect("a resource directory");
+                let leaf = resources::leaf(&root, &[0, 0, 0]).expect("the version resource");
+                assert!(resources::version_info(leaf.bytes(file)).contains(company.as_str()), "the version resource names {company}");
+            }
         }
         Kind::Elf => {
             let info = elf_edit::info(file).expect("a built ELF file has a readable dynamic section");
@@ -386,6 +423,15 @@ fn check_built(kind: &Kind, file: &[u8], exp: &Expect) {
             assert_eq!(text(elf_edit::DT_NEEDED), exp.needed, "DT_NEEDED");
             assert_eq!(text(elf_edit::DT_SONAME).pop(), exp.soname, "DT_SONAME");
             assert_eq!(text(elf_edit::DT_RUNPATH).pop(), exp.runpath, "DT_RUNPATH");
+            let mut dump = String::new();
+            analysis::dump(&parsed.root, 0, &mut dump);
+            if let Some(n) = exp.gnu_hashed.filter(|n| *n > 0) {
+                assert!(dump.contains(&format!("all {n} hashed symbols verify")), "the GNU hash table of {n} symbols must verify");
+                assert!(!dump.contains("MISMATCH"), "a built GNU hash table has no mismatches");
+            }
+            if exp.versioned {
+                assert!(dump.contains("[Symbol Versions (") && dump.contains("GLIBC_2.2.5"), "symbol versions");
+            }
         }
         Kind::MachO => {
             let slices = macho_edit::slices(file);
@@ -393,6 +439,11 @@ fn check_built(kind: &Kind, file: &[u8], exp: &Expect) {
             let s = &slices[0];
             let paths: Vec<(u32, String)> = s.cmds.iter().filter(|c| macho_edit::is_path_cmd(c.cmd)).filter_map(|c| Some((c.cmd, s.path(file, c)?))).collect();
             assert_eq!(paths, exp.paths, "dylib and rpath commands");
+            if exp.signed {
+                let mut text = String::new();
+                analysis::dump(&parsed.root, 0, &mut text);
+                assert!(text.contains("Page hashes: OK"), "a freshly signed file must verify");
+            }
         }
     }
 }
