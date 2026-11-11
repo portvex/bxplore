@@ -230,16 +230,37 @@ fn objc_classes_exports_and_fixups_match_the_system_tools() {
                 assert_eq!(addr, 0x1_0000_0000 + off, "{what}: address of {name}");
             }
 
-            // Imports bound by the fixups: every symbol dyld_info lists is in ours, with its library.
-            let (_, fixups) = run("dyld_info", &["-arch", arch, "-fixups", exe.to_str().unwrap()]);
-            let binds: Vec<&str> = fixups.lines().filter(|l| l.contains(" bind ")).collect();
-            assert!(!binds.is_empty(), "{what}:\n{fixups}");
+            // Imports bound by the fixups: every symbol the system tool lists is in ours, at its address.
+            // Chained fixups are checked against dyld_info. The classic bind opcodes are checked
+            // against objdump: dyld_info in Xcode 16.4 reads them one symbol off (it put
+            // _objc_msgSend in a metaclass's cache slot), where objdump, the dyld_info of later
+            // Xcode versions and bxplore agree.
+            let exe = exe.to_str().unwrap();
+            let binds: Vec<(String, String)> = if extra.is_empty() {
+                let (_, fixups) = run("dyld_info", &["-arch", arch, "-fixups", exe]);
+                fixups
+                    .lines()
+                    .filter(|l| l.contains(" bind "))
+                    .map(|l| {
+                        let sym = l.split('/').next_back().unwrap_or("").split_whitespace().next().unwrap_or("");
+                        (l.split_whitespace().nth(2).unwrap_or("").to_string(), sym.to_string())
+                    })
+                    .collect()
+            } else {
+                ["--bind", "--lazy-bind"]
+                    .iter()
+                    .flat_map(|table| run("objdump", &["--macho", table, exe]).1.lines().map(str::to_string).collect::<Vec<_>>())
+                    .filter_map(|l| {
+                        let addr = l.split_whitespace().find(|f| f.starts_with("0x"))?.to_string();
+                        Some((addr, l.split_whitespace().next_back()?.to_string()))
+                    })
+                    .collect()
+            };
+            assert!(!binds.is_empty(), "{what}: the system tool lists no binds");
             let ours = if extra.is_empty() { rows(&text, "[Fixups (") } else { [rows(&text, "[Binds ("), rows(&text, "[Lazy Binds (")].concat() };
-            for b in &binds {
-                let sym = b.split('/').next_back().unwrap_or("").trim();
-                let sym = sym.split_whitespace().next().unwrap_or("");
-                let addr = b.split_whitespace().nth(2).unwrap_or("").trim_start_matches("0x").trim_start_matches('0').to_uppercase();
-                assert!(ours.iter().any(|r| r.contains(sym) && r.contains(&addr)), "{what}: bind of {sym} at {addr} missing\nours: {ours:#?}");
+            for (addr, sym) in &binds {
+                let addr = addr.trim_start_matches("0x").trim_start_matches('0').to_uppercase();
+                assert!(ours.iter().any(|r| r.contains(sym.as_str()) && r.contains(&addr)), "{what}: bind of {sym} at {addr} missing\nours: {ours:#?}");
             }
             assert!(text.contains("NSLog") && text.contains("Foundation"), "{what}");
         }
