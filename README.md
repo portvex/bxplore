@@ -189,7 +189,7 @@ To add it to your own flake, take it as an input and use its package. On NixOS:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     bxplore = {
-      url = "github:portvex/bxplore";            # or "github:portvex/bxplore/v0.1.0" for a release
+      url = "github:portvex/bxplore";            # or "github:portvex/bxplore/v0.1.1" for a release
       inputs.nixpkgs.follows = "nixpkgs";        # build against your nixpkgs, not a second copy
     };
   };
