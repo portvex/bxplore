@@ -31,6 +31,8 @@ parts:
     organize:
       bxplore: bin/bxplore
       bxplore.desktop: share/applications/bxplore.desktop
+      LICENSE: share/doc/bxplore/LICENSE
     stage:
       - bin/bxplore
       - share/applications/bxplore.desktop
+      - share/doc/bxplore/LICENSE

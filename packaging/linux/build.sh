@@ -28,6 +28,7 @@ stage() { # stage <arch>: the files every package takes
   cp "$ROOT/packaging/icons/bxplore-256.png" "$s/icon-256.png"
   cp "$ROOT/packaging/icons/bxplore-512.png" "$s/icon-512.png"
   cp "$ROOT/packaging/icons/bxplore.svg" "$s/icon.svg"
+  license_text "$s/LICENSE"
   sed -e "s/@VERSION@/$APP_VERSION/" -e "s/@DATE@/$(date -u +%F)/" "$ROOT/packaging/linux/metainfo.xml" > "$s/metainfo.xml"
 }
 
@@ -40,6 +41,7 @@ for arch in $ARCHS; do
     rm -rf "$WORK/$arch/tar" && mkdir -p "$t"
     cp "$bin" "$t/bxplore"
     cp "$ROOT/packaging/linux/bxplore.desktop" "$ROOT/README.md" "$t/"
+    license_text "$t/LICENSE"
     sed -i "s/^Icon=.*/Icon=bxplore/" "$t/bxplore.desktop"
     cp "$ROOT/packaging/icons/bxplore-256.png" "$t/bxplore.png"
     tar -C "$WORK/$arch/tar" -czf "$bin.tar.gz" "$APP_NAME-$APP_VERSION"

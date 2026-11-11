@@ -1,5 +1,5 @@
 ; NSIS installer for bxplore. Built by packaging/windows/build.sh, which passes
-; VERSION, VERSION_NUM (numeric part of VERSION), ARCH (x64 or arm64), EXE, ICON, OUT, TITLE, NAME, PUBLISHER.
+; VERSION, VERSION_NUM (numeric part of VERSION), ARCH (x64 or arm64), EXE, LICENSE, ICON, OUT, TITLE, NAME, PUBLISHER.
 Unicode true
 !include "MUI2.nsh"
 !include "x64.nsh"
@@ -91,6 +91,7 @@ Section "${TITLE}" SecMain
   SetShellVarContext all
   SetOutPath "$INSTDIR"
   File "/oname=${NAME}.exe" "${EXE}"
+  File "/oname=LICENSE.txt" "${LICENSE}"
   WriteUninstaller "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "Software\${TITLE}" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${TITLE}"
@@ -128,6 +129,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${TITLE}.lnk"
   Delete "$DESKTOP\${TITLE}.lnk"
   Delete "$INSTDIR\${NAME}.exe"
+  Delete "$INSTDIR\LICENSE.txt"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
   !insertmacro MenuAll MenuRemove

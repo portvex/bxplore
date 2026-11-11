@@ -324,3 +324,8 @@ Workflow `review-until-clean` after code changes.
 It has three project subagents (`.claude/agents/`: Rust code reviewer, software
 architect, UI/UX designer) review the changes, fixes what they report, and repeats until
 all three report no issues.
+
+## License
+
+MIT, see [`LICENSE`](LICENSE). The bundled Phosphor icon font has its own MIT license
+(`assets/Phosphor-LICENSE-MIT.txt`). The license file in every release package holds both notices.

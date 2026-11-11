@@ -56,11 +56,12 @@ for spec in x64:x86_64-pc-windows-gnu:x86_64-w64-mingw32 arm64:aarch64-pc-window
   sign "$exe"
 
   cp "$ROOT/README.md" "$w/README.md"
+  license_text "$w/LICENSE.txt"
   zip="$DIST/$APP_NAME-$APP_VERSION-windows-$arch-portable.zip"
-  rm -f "$zip" && (cd "$w" && zip -q -9 "$zip" "$APP_NAME.exe" README.md)
+  rm -f "$zip" && (cd "$w" && zip -q -9 "$zip" "$APP_NAME.exe" README.md LICENSE.txt)
 
   setup="$DIST/$APP_NAME-$APP_VERSION-windows-$arch-setup.exe"
-  makensis -V2 -DVERSION="$APP_VERSION" -DVERSION_NUM="$APP_VERSION_NUM" -DARCH="$arch" -DEXE="$exe" -DICON="$ROOT/packaging/icons/bxplore.ico" \
+  makensis -V2 -DVERSION="$APP_VERSION" -DVERSION_NUM="$APP_VERSION_NUM" -DARCH="$arch" -DEXE="$exe" -DLICENSE="$w/LICENSE.txt" -DICON="$ROOT/packaging/icons/bxplore.ico" \
     -DOUT="$setup" -DTITLE="$APP_TITLE" -DNAME="$APP_NAME" -DPUBLISHER="$APP_PUBLISHER" "$ROOT/packaging/windows/bxplore.nsi"
   sign "$setup"
   echo "built $zip and $setup"

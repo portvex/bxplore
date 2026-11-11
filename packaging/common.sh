@@ -12,3 +12,10 @@ APP_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)
 # Numeric part only (0.2.0-rc1 -> 0.2.0), for fields that accept nothing else:
 # Windows VERSIONINFO, NSIS VIProductVersion, macOS CFBundleVersion.
 APP_VERSION_NUM="${APP_VERSION%%-*}"
+
+# license_text <dest>: the project LICENSE followed by the notice of the Phosphor icon
+# font that the binary embeds (src/theme.rs). Every package ships this file.
+license_text() {
+  { cat "$ROOT/LICENSE"; printf '\n---\n\nThird-party: Phosphor icons (assets/Phosphor.ttf, embedded in the binary)\n\n'
+    cat "$ROOT/assets/Phosphor-LICENSE-MIT.txt"; } > "$1"
+}
