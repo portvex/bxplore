@@ -12,6 +12,11 @@ nightly=$(rustup run nightly rustc --print sysroot)/bin
 PATH="$nightly:$PATH"
 export PATH
 [ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders structured differential"
+# A small quarantine, and freed memory given back: otherwise RSS grows over
+# thousands of runs and libFuzzer reports an OOM against whichever input is
+# running. Real blow-ups are caught by the view size check in parse_any.
+ASAN_OPTIONS="${ASAN_OPTIONS:-quarantine_size_mb=32:allocator_release_to_os_interval_ms=1000}"
+export ASAN_OPTIONS
 status=0
 for t in $target; do
     echo "=== $t (${seconds}s)"

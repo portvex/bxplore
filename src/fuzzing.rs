@@ -24,9 +24,23 @@ fn walk(node: &Node, data: &[u8]) {
     }
 }
 
+/// Text the parsed view holds.
+fn view_text(n: &Node) -> usize {
+    let own = match &n.view {
+        View::Grid(g) | View::Tool(_, g) => g.rows.iter().flatten().map(|c| c.text.len()).sum(),
+        View::Text(t) => t.len(),
+    };
+    n.title.len() + own + n.children.iter().map(view_text).sum::<usize>()
+}
+
 /// Format detection, full parse, text dump and every editable field.
 pub fn parse_any(data: &[u8]) {
     let parsed = analysis::parse(data);
+    // A file's view stays proportional to the file. Real binaries hold under one
+    // byte of text per byte; a few KB once became 83 MB (relocations) and 253 MB
+    // (repeated binds). Checked here, it fails with a cause instead of an OOM.
+    let text = view_text(&parsed.root);
+    assert!(text <= (64 << 20) + 256 * data.len(), "{} bytes of input became {text} bytes of view", data.len());
     let mut out = String::new();
     analysis::dump(&parsed.root, 0, &mut out);
     walk(&parsed.root, data);
