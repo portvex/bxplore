@@ -268,9 +268,10 @@ rust-analyzer, and `nix build .` builds the checkout.
 
 | Check | Command | Runs in |
 | --- | --- | --- |
-| Format | `cargo fmt --all -- --check` (`rustfmt.toml`) | pre-commit hook |
-| Lint | `cargo clippy --all-targets --all-features -- -D warnings` (`[lints]` in `Cargo.toml`) | pre-commit hook |
-| Tests | `cargo test` | pre-push hook |
+| Format | `cargo fmt --all -- --check` (`rustfmt.toml`) | pre-commit hook, CI |
+| Lint | `cargo clippy --all-targets --all-features -- -D warnings` (`[lints]` in `Cargo.toml`) | pre-commit hook, CI |
+| Tests | `cargo test` | pre-push hook, CI |
+| Library without the GUI | `cargo build --lib --no-default-features` | CI |
 | Advisories | `cargo audit` | pre-push hook |
 | Licenses, sources, advisories | `cargo deny check` (`deny.toml`) | pre-push hook |
 | Unused dependencies | `cargo machete` | pre-push hook |
@@ -280,6 +281,12 @@ cargo-husky the first time `cargo test` builds. After editing a hook, run
 `cargo clean -p cargo-husky && cargo test` to reinstall it. `cargo audit` and
 `cargo deny` are skipped with a notice when the tools are not installed
 (`cargo install cargo-audit cargo-deny`).
+
+CI (`.github/workflows/ci.yml`) runs on every pull request and push to `main`, on Linux,
+macOS and Windows. `main` is protected: changes land through pull requests, and a pull request
+can be merged once the "CI result" check passes; no review approval is needed. Force pushes and
+deleting `main` are blocked. Release tags (`v*`) cannot be moved or deleted, and only the
+repository admin can create them.
 
 The minimum supported Rust version is 1.95 (`rust-version` in `Cargo.toml`), set by the
 GUI stack. The `selftest` feature (off by default) adds environment driven screenshots
