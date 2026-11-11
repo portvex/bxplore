@@ -50,6 +50,11 @@ except the snap and Nix, and attaches them, with a `SHA256SUMS` file, to a draft
   touches a release, even when you pick a tag.
 - Signing turns on when its repository secrets are set (see the comment at the top of the
   workflow).
+- The release also carries `bxplore.rb`, the Homebrew cask for
+  [portvex/homebrew-tap](https://github.com/portvex/homebrew-tap): `homebrew/bxplore.rb.in`
+  with this release's version and the DMG's SHA-256. After publishing, copy it to the tap's
+  `Casks/bxplore.rb` in a pull request; check it there with `brew style portvex/tap/bxplore`
+  and `brew audit --cask --online portvex/tap/bxplore`.
 
 ## How each package is made
 
