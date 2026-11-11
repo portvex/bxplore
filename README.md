@@ -162,7 +162,8 @@ the one file. How static the result is depends on the platform (set in `.cargo/c
 
 `packaging/` builds the release packages: a portable zip and an NSIS installer for Windows, a
 universal DMG for macOS, and a standalone executable, Flatpak and snap for Linux, each for
-x86_64 and ARM64. See `packaging/README.md`.
+x86_64 and ARM64. GitHub releases carry all of them except the snap, which is built locally
+only. See `packaging/README.md`.
 
 ### Nix
 

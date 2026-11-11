@@ -32,15 +32,15 @@ The Flatpak and the snap wrap the standalone executable, so build `bin` before t
 
 ## Releases
 
-`.github/workflows/release.yml` builds the same packages on GitHub Actions with these scripts
-(Nix excepted) and attaches them, with a `SHA256SUMS` file, to a draft release:
+`.github/workflows/release.yml` builds the same packages on GitHub Actions with these scripts,
+except the snap and Nix, and attaches them, with a `SHA256SUMS` file, to a draft release:
 
     git tag v0.2.0 && git push origin v0.2.0
 
 - The tag must be `v` plus the version in `Cargo.toml`, or the run stops before building.
   A tag with a hyphen (`v0.2.0-rc1`) makes a prerelease.
 - The tests run first. The Windows packages are cross-built on Ubuntu as in the VM. The
-  Flatpak and snap for each architecture build on a runner of that architecture. The DMG
+  Flatpak for each architecture builds on a runner of that architecture. The DMG
   builds on macOS.
 - The release stays a draft until you publish it from the Releases page. To rebuild a
   draft, open the tag's run in the Actions tab and choose **Re-run all jobs**; this replaces

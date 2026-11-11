@@ -1,5 +1,5 @@
-# Builds every package with the scripts in packaging/ and, for a version tag,
-# attaches them to a draft GitHub Release for review.
+# Builds the packages with the scripts in packaging/ (all but the snap and Nix) and,
+# for a version tag, attaches them to a draft GitHub Release for review.
 #
 #   git tag v0.2.0 && git push origin v0.2.0
 #
@@ -66,8 +66,9 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-  # The Flatpak and the snap wrap the standalone executable from linux-bin, and
-  # each is built on a runner of its own architecture.
+  # The Flatpak wraps the standalone executable from linux-bin and is built on a
+  # runner of its own architecture. The snap is not built here: it needs tools from
+  # the Snap Store, and packaging/vm.sh still builds it locally.
   flatpak:
     needs: linux-bin
     strategy:
@@ -97,48 +98,6 @@ jobs:
         with:
           name: flatpak-${{ matrix.arch }}
           path: dist/*.flatpak
-          if-no-files-found: error
-
-  snap:
-    needs: linux-bin
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { arch: x86_64, runner: ubuntu-24.04 }
-          - { arch: aarch64, runner: ubuntu-24.04-arm }
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-bin
-          path: dist
-      - name: Tools
-        run: |
-          # snapd on a fresh runner can still be starting, or fail to reach the store at first.
-          retry() {
-            for i in 1 2 3 4 5; do
-              "$@" && return 0
-              echo "attempt $i failed: $*"
-              [ "$i" = 5 ] || sleep 20
-            done
-            return 1
-          }
-          retry sudo snap wait system seed.loaded
-          retry sudo snap install snapcraft --classic
-          retry sudo snap install lxd
-          sudo lxd waitready --timeout=120
-          sudo lxd init --auto
-          sudo usermod -aG lxd "$USER"
-          # Docker on the runner drops forwarded traffic, which cuts the LXD build container off the network.
-          sudo iptables -P FORWARD ACCEPT
-      - run: ARCHS=${{ matrix.arch }} packaging/linux/build.sh snap
-      - uses: actions/upload-artifact@v4
-        with:
-          name: snap-${{ matrix.arch }}
-          path: dist/*.snap
           if-no-files-found: error
 
   windows:
@@ -223,7 +182,7 @@ jobs:
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [flatpak, snap, windows, macos]
+    needs: [flatpak, windows, macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
