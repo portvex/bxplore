@@ -1,0 +1,44 @@
+# Temporary: settles why the Objective-C fixups test fails with the Xcode on
+# GitHub's Intel macOS runner. Prints the raw dyld_info output next to what
+# bxplore reads, and keeps the binaries. Delete with the branch.
+name: Diagnose ObjC fixups
+
+on:
+  push:
+    branches: [diag/objc-xcode]
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -version; ld -v 2>&1 | head -2; xcrun --show-sdk-version
+      - run: rustup update stable --no-self-update && rustup default stable
+      - name: Build the sample both ways, dump with dyld_info and bxplore
+        run: |
+          mkdir -p out
+          sed -n '/^const OBJC: &str = r#"/,/^"#;/p' tests/macho_edit.rs | sed '1d;$d' > out/o.m
+          cargo build -q --release --bin bxplore
+          for arch in arm64 x86_64; do
+            for extra in "" "-Wl,-no_fixup_chains"; do
+              tag="$arch${extra:+-nochains}"
+              cc -arch "$arch" -fobjc-arc -framework Foundation ${extra:+"$extra"} out/o.m -o "out/$tag"
+              echo "=== $tag: dyld_info -fixups"
+              dyld_info -arch "$arch" -fixups "out/$tag" | tee "out/$tag.dyld_info.txt" | grep -E "bind|objc" | head -40
+              echo "=== $tag: bxplore binds"
+              ./target/release/bxplore --dump "out/$tag" > "out/$tag.bxplore.txt"
+              grep -A40 -E "\[(Binds|Fixups) \(" "out/$tag.bxplore.txt" | head -45
+            done
+          done
+      - name: The failing test itself
+        run: cargo test --test macho_edit objc -- --nocapture
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: objc-diag
+          path: out/
