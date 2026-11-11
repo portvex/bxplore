@@ -285,7 +285,7 @@ pub fn decoders(data: &[u8]) {
         size: (n * (b - a) / 16) as u64,
         offset: n * a / 16,
     };
-    let budget = crate::macho_dyld::Budget::new();
+    let budget = crate::macho_dyld::Budget::for_file(data.len());
     for chained in [None, Some((0, n))] {
         let ctx = crate::macho_dyld::Ctx {
             data,

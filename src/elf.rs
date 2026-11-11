@@ -198,7 +198,8 @@ pub fn parse(data: &[u8]) -> Option<Parsed> {
     let p = if is64 { 8 } else { 4 };
     let hex = |off: usize, size: usize| cell(data, off, size, Kind::Hex, en);
     let mut nodes = Vec::new();
-    let budget = Budget(std::cell::Cell::new(GRID_BUDGET));
+    // Scaled to the file, as for Mach-O: a few KB must not reach the ceiling.
+    let budget = Budget(std::cell::Cell::new(crate::macho_dyld::grid_budget(data.len()).min(GRID_BUDGET)));
 
     // Header
     let mut f = Fields::new(data, en);

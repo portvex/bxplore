@@ -754,7 +754,10 @@ fn needed_versions_are_capped() {
     put(&mut f, 0x300 + 64 + 4, &0x6fff_fffeu32.to_le_bytes()); // SHT_GNU_verneed
     put(&mut f, 0x300 + 64 + 24, &(at as u64).to_le_bytes());
     put(&mut f, 0x300 + 64 + 32, &size.to_le_bytes());
-    assert!(dump(&f).contains("[Needed Versions (200000)]"), "1,048,576 rows without the cap");
+    // The grid budget, scaled to this 70 KB file, cuts the list before MAX_ROWS (200 000) would.
+    let text = dump(&f);
+    let shown = text.split("[Needed Versions (first ").nth(1).and_then(|r| r.split(' ').next()).and_then(|n| n.parse::<usize>().ok());
+    assert!(shown.is_some_and(|n| (10_000..=200_000).contains(&n)), "1,048,576 rows without the cap: {shown:?}");
     // Aux entries outside the section are not followed.
     put(&mut f, 0x300 + 64 + 32, &4096u64.to_le_bytes());
     assert!(dump(&f).contains("[Needed Versions (0)]"));
@@ -802,7 +805,8 @@ fn elf_grids_of_aliased_sections_share_one_budget() {
     let parsed = bxplore::analysis::parse(&f);
     assert!(matches!(parsed.format, bxplore::model::Format::Elf));
     let total = rows(&parsed.root);
-    assert!((200_000..2_000_000).contains(&total), "{total} rows");
+    // Bounded by the grid budget, which scales with the file (53 MB for these 830 KB).
+    assert!((100_000..2_000_000).contains(&total), "{total} rows");
     fn titles_of(n: &Node, out: &mut Vec<String>) {
         out.push(n.title.clone());
         n.children.iter().for_each(|c| titles_of(c, out));
@@ -1036,7 +1040,8 @@ fn chained_fixup_links_do_not_scan_the_segments() {
     // name 400 segments: every link used to search them for __TEXT.
     let f = chained_macho(400, 2);
     let titles = dump(&f);
-    assert!(titles.contains("[Fixups (131200, first 100000 shown)]"), "64 * 2 * 1025 links");
+    // Every link is counted; the grid budget for this file decides how many are listed.
+    assert!(titles.contains("[Fixups (131200, first "), "64 * 2 * 1025 links");
     assert!(titles.contains("399: LC_SEGMENT_64 (__TEXU)"), "the load command view shows every segment");
     // Only the first 256 segments are kept for lookups, so the fixups are not
     // attributed to segment 300, which starts at their address.
@@ -1122,4 +1127,22 @@ fn a_relocation_block_is_read_only_inside_the_file() {
     let bxplore::model::View::Grid(g) = &relocs.view else { panic!("the relocations are a grid") };
     assert_eq!(g.rows.len(), 18);
     assert!(relocs.children.iter().any(|c| matches!(&c.view, bxplore::model::View::Text(t) if t.contains("claims 547397788 entries"))));
+}
+
+/// 3.8 KB of Mach-O whose bind opcodes repeat one 4 KB symbol name: the grid
+/// budget scales with the file, so the view stays small (it took 519 MB when
+/// every file could use the full 256 MB).
+#[test]
+fn a_small_file_cannot_use_the_whole_grid_budget() {
+    let input = std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fuzz/regressions/parse_any/repeated_bind_of_a_long_symbol.bin")).unwrap();
+    let parsed = bxplore::analysis::parse(&input);
+    fn text(n: &bxplore::model::Node) -> usize {
+        let own = match &n.view {
+            bxplore::model::View::Grid(g) | bxplore::model::View::Tool(_, g) => g.rows.iter().flatten().map(|c| c.text.len()).sum(),
+            bxplore::model::View::Text(t) => t.len(),
+        };
+        own + n.children.iter().map(text).sum::<usize>()
+    }
+    assert!(text(&parsed.root) <= bxplore::macho_dyld::MIN_GRID_BUDGET, "the view of a 3.8 KB file holds {} bytes of text", text(&parsed.root));
+    assert!(parsed.root.children.iter().any(|n| n.title.starts_with("Binds (first ") && n.title.ends_with(" shown)")), "the cut is announced");
 }

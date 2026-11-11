@@ -135,7 +135,7 @@ pub fn parse(data: &[u8]) -> Option<Parsed> {
     match magic {
         0xCAFE_BABE | 0xCAFE_BABF => parse_fat(data, magic == 0xCAFE_BABF),
         _ => {
-            let s = parse_slice(data, 0, data.len(), &crate::macho_dyld::Budget::new())?;
+            let s = parse_slice(data, 0, data.len(), &crate::macho_dyld::Budget::for_file(data.len()))?;
             Some(Parsed {
                 format: Format::MachO,
                 description: s.description,
@@ -167,7 +167,7 @@ fn parse_fat(data: &[u8], wide: bool) -> Option<Parsed> {
     let mut first: Option<Slice> = None;
     let mut names = Vec::new();
     // One budget for the whole file: the entries may all name the same bytes.
-    let budget = crate::macho_dyld::Budget::new();
+    let budget = crate::macho_dyld::Budget::for_file(data.len());
     for i in 0..n {
         let e = 8 + i * ent;
         if !rd.has(e, ent) {

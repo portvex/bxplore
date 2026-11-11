@@ -14,6 +14,11 @@ const MAX_ROWS: usize = 100_000;
 /// a row 100,000 times, every row carries a symbol name of up to 4 KB, and a
 /// fat file can name the same slice 30 times.
 pub const GRID_BUDGET: usize = 256 << 20;
+/// Grid memory per byte of input, with a floor of `MIN_GRID_BUDGET`: a file of
+/// a few KB must not reach `GRID_BUDGET` (a 3.8 KB file whose bind opcodes
+/// repeated one 4 KB symbol took 519 MB). Real files stay far below it.
+pub const GRID_BUDGET_PER_BYTE: usize = 64;
+pub const MIN_GRID_BUDGET: usize = 16 << 20;
 /// Chained fixup links followed per file. Segments, pages and the slices of
 /// a fat file may all describe the same bytes.
 pub const MAX_LINKS: usize = 4_000_000;
@@ -33,6 +38,18 @@ impl Budget {
     pub fn new() -> Budget {
         Budget { grid: std::cell::Cell::new(GRID_BUDGET), links: std::cell::Cell::new(MAX_LINKS) }
     }
+
+    /// The budget for a file of `len` bytes.
+    pub fn for_file(len: usize) -> Budget {
+        let b = Budget::new();
+        b.grid.set(grid_budget(len));
+        b
+    }
+}
+
+/// Grid memory a file of `len` bytes may use.
+pub fn grid_budget(len: usize) -> usize {
+    len.saturating_mul(GRID_BUDGET_PER_BYTE).clamp(MIN_GRID_BUDGET, GRID_BUDGET)
 }
 
 impl Default for Budget {
