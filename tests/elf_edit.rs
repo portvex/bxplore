@@ -232,7 +232,9 @@ fn object_files_keep_their_cross_references() {
 #[test]
 fn versioning_and_gnu_hash_views() {
     let Some(k) = kit("views") else { return };
-    let data = k.build("lib.so", &["-shared", "-fPIC", "-Wl,--hash-style=gnu"]);
+    // --no-as-needed keeps libc linked, so the library has versioned imports
+    // (__cxa_finalize@GLIBC_*) even where the toolchain defaults to --as-needed (Ubuntu).
+    let data = k.build("lib.so", &["-shared", "-fPIC", "-Wl,--hash-style=gnu", "-Wl,--no-as-needed"]);
     let mut text = String::new();
     bxplore::analysis::dump(&bxplore::analysis::parse(&data).root, 0, &mut text);
     assert!(text.contains("[Symbol Versions ("), "{text}");
