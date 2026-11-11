@@ -1,0 +1,41 @@
+# Weekly dependency updates as pull requests, which run CI like any other.
+# Minor and patch updates of each ecosystem come grouped in one pull
+# request; a major update gets its own, since it may need code changes.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+
+  # The fuzz crate has its own Cargo.lock (libfuzzer-sys, object).
+  - package-ecosystem: cargo
+    directory: /fuzz
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      fuzz-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps(fuzz)
+
+  # actions/checkout, upload-artifact and download-artifact in .github/workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
