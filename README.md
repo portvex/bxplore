@@ -165,6 +165,15 @@ universal DMG for macOS, and a standalone executable, Flatpak and snap for Linux
 x86_64 and ARM64. GitHub releases carry all of them except the snap, which is built locally
 only. See `packaging/README.md`.
 
+On macOS, Homebrew installs the app from the release's DMG:
+
+    brew install --cask portvex/tap/bxplore
+
+The cask also links `bxplore` into Homebrew's `bin` for `bxplore --dump`. bxplore is not
+notarized, so macOS blocks the app and the command until you allow it once: open
+bxplore.app with right click, Open, or run
+`xattr -dr com.apple.quarantine /Applications/bxplore.app`.
+
 ### Nix
 
 The flake builds for `x86_64-linux` and `aarch64-linux`. Run it without installing, or
@@ -180,7 +189,7 @@ To add it to your own flake, take it as an input and use its package. On NixOS:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     bxplore = {
-      url = "github:portvex/bxplore";            # or "github:portvex/bxplore/v0.1.0" for a release
+      url = "github:portvex/bxplore";            # or "github:portvex/bxplore/v0.1.1" for a release
       inputs.nixpkgs.follows = "nixpkgs";        # build against your nixpkgs, not a second copy
     };
   };

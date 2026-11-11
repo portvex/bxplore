@@ -188,10 +188,20 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+      - name: Homebrew cask
+        # Casks/bxplore.rb for portvex/homebrew-tap, pointing at this release's DMG.
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          dmg="dist/bxplore-$v-macos-universal.dmg"
+          [ -f "$dmg" ] || { echo "::error::$dmg is missing"; exit 1; }
+          sha="$(sha256sum "$dmg" | cut -d' ' -f1)"
+          sed -e "s/@VERSION@/$v/" -e "s/@SHA256@/$sha/" packaging/homebrew/bxplore.rb.in > dist/bxplore.rb
+          cat dist/bxplore.rb
       - name: Checksums
         run: cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
       - name: Draft release
