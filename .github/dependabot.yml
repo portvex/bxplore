@@ -15,9 +15,15 @@ updates:
     commit-message:
       prefix: deps
 
-  # The fuzz crate has its own Cargo.lock (libfuzzer-sys, object).
+  # The fuzz crate has its own Cargo.lock. Only its own dependencies
+  # (libfuzzer-sys, object) are updated here: one it shares with the crate
+  # through the path dependency would also change the crate's Cargo.toml
+  # without its Cargo.lock, which fails every --locked build (#5). Those come
+  # from the update above.
   - package-ecosystem: cargo
     directory: /fuzz
+    allow:
+      - dependency-type: direct
     schedule:
       interval: weekly
       day: monday
