@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 bxplore = { path = "..", default-features = false }
+object = { version = "0.41.0", default-features = false, features = ["read"] }
 
 # Keep this crate out of the parent workspace so `cargo build` ignores it.
 [workspace]
@@ -69,6 +70,20 @@ bench = false
 [[bin]]
 name = "decoders"
 path = "fuzz_targets/decoders.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "structured"
+path = "fuzz_targets/structured.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "differential"
+path = "fuzz_targets/differential.rs"
 test = false
 doc = false
 bench = false

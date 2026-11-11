@@ -222,6 +222,21 @@ fn mutated_seeds_do_not_panic() {
     }
 }
 
+/// The structure-aware builder over pseudo-random choices: every built file
+/// must parse back to what was written, and editing it must not panic.
+#[test]
+fn structured_files_read_back_what_was_built() {
+    let mut rng = Rng(0x2545_f491_4f6c_dd1d);
+    let mut kinds = [0usize; 3];
+    for _ in 0..3000 {
+        let len = (rng.next() % 600) as usize;
+        let input: Vec<u8> = (0..len).map(|_| rng.next() as u8).collect();
+        kinds[bxplore::fuzzgen::Gen::new(&input).below(3)] += 1;
+        fuzzing::structured(&input);
+    }
+    assert!(kinds.iter().all(|&k| k > 500), "every format is built: {kinds:?}");
+}
+
 #[test]
 fn saved_fuzzer_inputs_do_not_panic() {
     fn visit(dir: &std::path::Path, n: &mut usize) {
@@ -236,6 +251,7 @@ fn saved_fuzzer_inputs_do_not_panic() {
                 fuzzing::pe_edit(&data);
                 fuzzing::elf_edit(&data);
                 fuzzing::macho_edit(&data);
+                fuzzing::structured(&data);
                 *n += 1;
             }
         }

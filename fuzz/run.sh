@@ -11,7 +11,7 @@ seconds=${2:-60}
 nightly=$(rustup run nightly rustc --print sysroot)/bin
 PATH="$nightly:$PATH"
 export PATH
-[ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders"
+[ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders structured differential"
 status=0
 for t in $target; do
     echo "=== $t (${seconds}s)"

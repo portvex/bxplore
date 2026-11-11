@@ -2,6 +2,7 @@
 //! replay tests in `tests/fuzz_replay.rs`. Every function must accept
 //! arbitrary bytes without panicking.
 
+use crate::fuzzgen::{self, Expect, Kind};
 use crate::model::{Format, Node, View};
 use crate::pe::edit::{self, NewImport};
 use crate::pe::resources::{self, ResId};
@@ -328,5 +329,70 @@ pub fn resource_previews(data: &[u8]) {
     if data.len() <= 1 << 16 {
         let _ = resources::decode_image(data, false);
         let _ = resources::decode_image(data, true);
+    }
+}
+
+/// Structure-aware: the input describes a mostly valid PE, ELF or Mach-O file
+/// (see `fuzzgen`). The file is parsed, checked against what was built while
+/// it is intact, then edited with the remaining input choosing the edits.
+pub fn structured(input: &[u8]) {
+    let mut g = fuzzgen::Gen::new(input);
+    let (kind, mut file, exp) = fuzzgen::build(&mut g);
+    // A few files get damaged, to test the error paths deep inside valid structure.
+    let intact = !g.chance(64);
+    if !intact && !file.is_empty() {
+        for _ in 0..1 + g.below(4) {
+            let i = g.below(file.len());
+            file[i] ^= g.byte().max(1);
+        }
+        if g.chance(64) {
+            file.truncate(g.below(file.len() + 1));
+        }
+    }
+    parse_any(&file);
+    parse_each(&file);
+    if intact {
+        check_built(&kind, &file, &exp);
+    }
+    let mut ops = g.bytes(4);
+    ops.extend_from_slice(&file);
+    match kind {
+        Kind::Pe => pe_edit(&ops),
+        Kind::Elf => elf_edit(&ops),
+        Kind::MachO => macho_edit(&ops),
+    }
+}
+
+/// The parsers must report exactly what the builder wrote.
+fn check_built(kind: &Kind, file: &[u8], exp: &Expect) {
+    let parsed = analysis::parse(file);
+    assert_eq!(parsed.entry, exp.entry, "entry point");
+    match kind {
+        Kind::Pe => {
+            let pe = pe::Pe::parse(file).expect("a built PE parses");
+            let imports: Vec<(String, Vec<Result<String, u16>>)> =
+                pe.imports(file).into_iter().map(|m| (m.name, m.funcs.into_iter().map(|f| f.name.ok_or(f.ordinal.unwrap_or(0))).collect())).collect();
+            assert_eq!(imports, exp.imports, "imports");
+            let mut exports: Vec<String> = edit::parse_exports(file, &pe).map(|t| t.funcs.into_iter().flat_map(|f| f.names).collect()).unwrap_or_default();
+            exports.sort();
+            assert_eq!(exports, exp.exports, "exports");
+            let mut relocs = edit::parse_relocs(file, &pe);
+            relocs.sort();
+            assert_eq!(relocs, exp.relocs, "relocations");
+        }
+        Kind::Elf => {
+            let info = elf_edit::info(file).expect("a built ELF file has a readable dynamic section");
+            let text = |tag: u64| info.entries.iter().filter(|e| e.tag == tag).filter_map(|e| e.text.clone()).collect::<Vec<_>>();
+            assert_eq!(text(elf_edit::DT_NEEDED), exp.needed, "DT_NEEDED");
+            assert_eq!(text(elf_edit::DT_SONAME).pop(), exp.soname, "DT_SONAME");
+            assert_eq!(text(elf_edit::DT_RUNPATH).pop(), exp.runpath, "DT_RUNPATH");
+        }
+        Kind::MachO => {
+            let slices = macho_edit::slices(file);
+            assert_eq!(slices.len(), 1, "one slice");
+            let s = &slices[0];
+            let paths: Vec<(u32, String)> = s.cmds.iter().filter(|c| macho_edit::is_path_cmd(c.cmd)).filter_map(|c| Some((c.cmd, s.path(file, c)?))).collect();
+            assert_eq!(paths, exp.paths, "dylib and rpath commands");
+        }
     }
 }

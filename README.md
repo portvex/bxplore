@@ -310,6 +310,8 @@ a nightly toolchain and `cargo install cargo-fuzz`.
 | `macho_edit` | the Mach-O load command editor, then re-parse |
 | `queries` | search, offset lookup and file comparison |
 | `decoders` | Authenticode, Mach-O code signature and dynamic linking data, .NET metadata, signatures and IL, fed directly |
+| `structured` | builds a mostly valid PE, ELF or Mach-O file from the input (`src/fuzzgen.rs`), checks that the parsers read back exactly what was built (entry point, imports, exports, relocations, DT_NEEDED, SONAME, RUNPATH, dylib and rpath commands), then edits it |
+| `differential` | compares bxplore with the `object` crate on built and raw files: format, entry point, sections and PE imports must agree |
 
 ```
 fuzz/run.sh                 # every target for 60 seconds

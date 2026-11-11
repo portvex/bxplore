@@ -6,6 +6,7 @@
 pub mod analysis;
 pub mod elf;
 pub mod elf_edit;
+pub mod fuzzgen;
 pub mod fuzzing;
 pub mod macho;
 pub mod macho_dyld;

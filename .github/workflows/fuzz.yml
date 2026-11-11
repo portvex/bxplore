@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [parse_any, parse_each, pe_edit, resource_previews, elf_edit, macho_edit, queries, decoders]
+        target: [parse_any, parse_each, pe_edit, resource_previews, elf_edit, macho_edit, queries, decoders, structured, differential]
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install nightly --profile minimal --component llvm-tools-preview

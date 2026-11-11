@@ -15,7 +15,7 @@ if [ ! -x "$cov" ]; then
     echo "llvm-cov is missing; run: rustup component add llvm-tools-preview --toolchain nightly" >&2
     exit 2
 fi
-[ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders"
+[ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders structured differential"
 mkdir -p fuzz/coverage
 for t in $target; do
     mkdir -p "fuzz/corpus/$t" "fuzz/seeds/$t"
