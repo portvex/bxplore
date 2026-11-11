@@ -1,0 +1,23 @@
+#!/bin/sh
+# Installed into .git/hooks by cargo-husky. Slower checks: tests, advisories, policy.
+set -e
+echo "pre-push: cargo test"
+cargo test --quiet
+if cargo audit --version >/dev/null 2>&1; then
+    echo "pre-push: cargo audit"
+    cargo audit --quiet
+else
+    echo "pre-push: cargo-audit is not installed, skipping (cargo install cargo-audit)"
+fi
+if cargo deny --version >/dev/null 2>&1; then
+    echo "pre-push: cargo deny"
+    cargo deny check
+else
+    echo "pre-push: cargo-deny is not installed, skipping (cargo install cargo-deny)"
+fi
+if cargo machete --version >/dev/null 2>&1; then
+    echo "pre-push: cargo machete"
+    cargo machete
+else
+    echo "pre-push: cargo-machete is not installed, skipping (cargo install cargo-machete)"
+fi

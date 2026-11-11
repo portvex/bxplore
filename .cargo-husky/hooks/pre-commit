@@ -1,0 +1,7 @@
+#!/bin/sh
+# Installed into .git/hooks by cargo-husky. Fast checks only: formatting and lints.
+set -e
+echo "pre-commit: cargo fmt --check"
+cargo fmt --all -- --check
+echo "pre-commit: cargo clippy"
+cargo clippy --all-targets --all-features --quiet -- -D warnings

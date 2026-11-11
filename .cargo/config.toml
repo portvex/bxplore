@@ -1,0 +1,25 @@
+[alias]
+# Build the self-contained executable into target/standalone/ (or
+# target/<triple>/standalone/ with --target).
+standalone = "build --profile standalone"
+
+# Link the C runtime statically where the platform allows it, so the
+# executable needs no runtime redistributable.
+# Windows (MSVC): no vcruntime140.dll dependency.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.i686-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# Linux (musl): fully static. This suits the command line build
+# (--no-default-features); the GUI loads the display and GL libraries at run
+# time, which a fully static executable cannot do.
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]

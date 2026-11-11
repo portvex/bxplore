@@ -1,0 +1,41 @@
+[File]
+  Property     Value
+  File Type    ELF64 executable for x86-64
+  Byte Order   little endian
+  OS ABI       System V
+  Entry Point  400100
+  Sections     no section headers (stripped)
+  [ELF Header]
+    Member                  Offset    Size     Value             Meaning
+    e_ident[EI_MAG]         00000000  Dword    7F454C46          \x7FELF
+    e_ident[EI_CLASS]       00000004  Byte     02                ELF64
+    e_ident[EI_DATA]        00000005  Byte     01                Little endian
+    e_ident[EI_VERSION]     00000006  Byte     01
+    e_ident[EI_OSABI]       00000007  Byte     00                System V
+    e_ident[EI_ABIVERSION]  00000008  Byte     00
+    e_ident[EI_PAD]         00000009  7 bytes  00000000000000
+    e_type                  00000010  Word     0002              ET_EXEC (executable)
+    e_machine               00000012  Word     003E              x86-64
+    e_version               00000014  Dword    00000001
+    e_entry                 00000018  Qword    0000000000400100
+    e_phoff                 00000020  Qword    0000000000000040
+    e_shoff                 00000028  Qword    0000000000000000
+    e_flags                 00000030  Dword    00000000
+    e_ehsize                00000034  Word     0040
+    e_phentsize             00000036  Word     0038
+    e_phnum                 00000038  Word     1
+    e_shentsize             0000003A  Word     0040
+    e_shnum                 0000003C  Word     0
+    e_shstrndx              0000003E  Word     0
+  [Program Headers (1)]
+    Type      Type Name  Flags     Offset            VirtAddr          PhysAddr          FileSize          MemSize           Align             Perm
+    00000001  LOAD       00000005  0000000000000000  0000000000400000  0000000000000000  0000000000000200  0000000000000200  0000000000000000  X | R
+  [Dynamic Editor]
+  [Section Editor]
+  [Address Converter]
+  [Disassembler]
+  [Strings]
+  [Hex Editor]
+  [Bookmarks]
+  [Compare]
+  [Search]

@@ -1,0 +1,36 @@
+# Wraps the prebuilt standalone executable for @SNAP_ARCH@.
+name: bxplore
+title: bxplore
+version: '@VERSION@'
+summary: Viewer and editor for PE, ELF and Mach-O files
+description: |
+  bxplore shows the structure of Windows, Linux and macOS executables and lets
+  you edit it: headers, sections, imports, exports, resources, relocations,
+  signatures and more, with a hex editor and a disassembler.
+license: MIT
+base: core24
+grade: stable
+confinement: strict
+icon: stage/icon-512.png
+platforms:
+  @SNAP_ARCH@:
+    build-on: [amd64, arm64]
+    build-for: [@SNAP_ARCH@]
+apps:
+  bxplore:
+    command: bin/bxplore
+    desktop: share/applications/bxplore.desktop
+    extensions: [gnome]
+    plugs:
+      - home
+      - removable-media
+parts:
+  bxplore:
+    plugin: dump
+    source: stage
+    organize:
+      bxplore: bin/bxplore
+      bxplore.desktop: share/applications/bxplore.desktop
+    stage:
+      - bin/bxplore
+      - share/applications/bxplore.desktop

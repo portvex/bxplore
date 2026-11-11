@@ -1,0 +1,46 @@
+# Scheduled fuzzing: every target for 30 minutes, with crash inputs and a
+# coverage summary kept as artifacts. Run it by hand from the Actions tab too.
+name: Fuzz
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds per target
+        default: "1800"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse_any, parse_each, pe_edit, resource_previews, elf_edit, macho_edit, queries, decoders]
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal --component llvm-tools-preview
+      - run: cargo install cargo-fuzz --locked
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: corpus-${{ matrix.target }}-
+      - name: Fuzz
+        run: fuzz/run.sh ${{ matrix.target }} ${{ github.event.inputs.seconds || '1800' }}
+      - name: Coverage
+        if: always()
+        run: fuzz/coverage.sh ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: |
+            fuzz/artifacts/${{ matrix.target }}
+            fuzz/coverage/${{ matrix.target }}.txt
+          if-no-files-found: ignore

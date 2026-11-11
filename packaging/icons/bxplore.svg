@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b3350"/>
+      <stop offset="1" stop-color="#141826"/>
+    </linearGradient>
+    <linearGradient id="hi" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7cc4ff"/>
+      <stop offset="1" stop-color="#4f8cff"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <!-- a file's structure: header row, then rows of bytes with one field picked out -->
+  <rect x="200" y="208" width="624" height="96" rx="28" fill="url(#hi)"/>
+  <g fill="#5a6488">
+    <rect x="200" y="360" width="136" height="80" rx="20"/>
+    <rect x="362" y="360" width="136" height="80" rx="20"/>
+    <rect x="688" y="360" width="136" height="80" rx="20"/>
+    <rect x="200" y="472" width="136" height="80" rx="20"/>
+    <rect x="524" y="472" width="136" height="80" rx="20"/>
+    <rect x="688" y="472" width="136" height="80" rx="20"/>
+    <rect x="200" y="584" width="136" height="80" rx="20"/>
+    <rect x="362" y="584" width="136" height="80" rx="20"/>
+    <rect x="524" y="584" width="136" height="80" rx="20"/>
+    <rect x="200" y="696" width="136" height="80" rx="20"/>
+    <rect x="362" y="696" width="136" height="80" rx="20"/>
+    <rect x="688" y="696" width="136" height="80" rx="20"/>
+  </g>
+  <g fill="#ffb454">
+    <rect x="524" y="360" width="136" height="80" rx="20"/>
+    <rect x="362" y="472" width="136" height="80" rx="20"/>
+  </g>
+  <g fill="#6bd6a0">
+    <rect x="688" y="584" width="136" height="80" rx="20"/>
+    <rect x="524" y="696" width="136" height="80" rx="20"/>
+  </g>
+</svg>

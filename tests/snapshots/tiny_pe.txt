@@ -1,0 +1,123 @@
+[File]
+  Property         Value
+  File Type        PE32 executable for Intel 386
+  Subsystem        Windows Console
+  Compiled
+  Entry Point RVA  00001000
+  Image Base       400000
+  Sections         .text
+  CheckSum         stored 00000000, computed 00005096 (not set)
+  [Dos Header]
+    Member      Offset    Size      Value                                     Meaning
+    e_magic     00000000  Word      5A4D
+    e_cblp      00000002  Word      0000
+    e_cp        00000004  Word      0000
+    e_crlc      00000006  Word      0000
+    e_cparhdr   00000008  Word      0000
+    e_minalloc  0000000A  Word      0000
+    e_maxalloc  0000000C  Word      0000
+    e_ss        0000000E  Word      0000
+    e_sp        00000010  Word      0000
+    e_csum      00000012  Word      0000
+    e_ip        00000014  Word      0000
+    e_cs        00000016  Word      0000
+    e_lfarlc    00000018  Word      0000
+    e_ovno      0000001A  Word      0000
+    e_res       0000001C  Qword     0000000000000000
+    e_oemid     00000024  Word      0000
+    e_oeminfo   00000026  Word      0000
+    e_res2      00000028  20 bytes  0000000000000000000000000000000000000000
+    e_lfanew    0000003C  Dword     00000080
+  [Nt Headers]
+    Member     Offset    Size   Value     Meaning
+    Signature  00000080  Dword  00004550  PE\0\0
+    [File Header]
+      Member                Offset    Size   Value     Meaning
+      Machine               00000084  Word   014C      Intel 386
+      NumberOfSections      00000086  Word   0001
+      TimeDateStamp         00000088  Dword  00000000
+      PointerToSymbolTable  0000008C  Dword  00000000
+      NumberOfSymbols       00000090  Dword  00000000
+      SizeOfOptionalHeader  00000094  Word   00E0
+      Characteristics       00000096  Word   0102      EXECUTABLE_IMAGE | 32BIT_MACHINE
+    [Optional Header]
+      Member                       Offset    Size   Value     Meaning
+      Magic                        00000098  Word   010B      PE32
+      MajorLinkerVersion           0000009A  Byte   00
+      MinorLinkerVersion           0000009B  Byte   00
+      SizeOfCode                   0000009C  Dword  00000000
+      SizeOfInitializedData        000000A0  Dword  00000000
+      SizeOfUninitializedData      000000A4  Dword  00000000
+      AddressOfEntryPoint          000000A8  Dword  00001000  in section .text
+      BaseOfCode                   000000AC  Dword  00000000
+      BaseOfData                   000000B0  Dword  00000000
+      ImageBase                    000000B4  Dword  00400000
+      SectionAlignment             000000B8  Dword  00001000
+      FileAlignment                000000BC  Dword  00000200
+      MajorOperatingSystemVersion  000000C0  Word   0000
+      MinorOperatingSystemVersion  000000C2  Word   0000
+      MajorImageVersion            000000C4  Word   0000
+      MinorImageVersion            000000C6  Word   0000
+      MajorSubsystemVersion        000000C8  Word   0000
+      MinorSubsystemVersion        000000CA  Word   0000
+      Win32VersionValue            000000CC  Dword  00000000
+      SizeOfImage                  000000D0  Dword  00002000
+      SizeOfHeaders                000000D4  Dword  00000200
+      CheckSum                     000000D8  Dword  00000000
+      Subsystem                    000000DC  Word   0003      Windows Console
+      DllCharacteristics           000000DE  Word   0000
+      SizeOfStackReserve           000000E0  Dword  00000000
+      SizeOfStackCommit            000000E4  Dword  00000000
+      SizeOfHeapReserve            000000E8  Dword  00000000
+      SizeOfHeapCommit             000000EC  Dword  00000000
+      LoaderFlags                  000000F0  Dword  00000000
+      NumberOfRvaAndSizes          000000F4  Dword  00000010
+      [Data Directories]
+        Member                        Offset    Size   Value     Meaning
+        Export Directory RVA          000000F8  Dword  00000000
+        Export Directory Size         000000FC  Dword  00000000
+        Import Directory RVA          00000100  Dword  00000000
+        Import Directory Size         00000104  Dword  00000000
+        Resource Directory RVA        00000108  Dword  00000000
+        Resource Directory Size       0000010C  Dword  00000000
+        Exception Directory RVA       00000110  Dword  00000000
+        Exception Directory Size      00000114  Dword  00000000
+        Security Directory RVA        00000118  Dword  00000000
+        Security Directory Size       0000011C  Dword  00000000
+        Relocation Directory RVA      00000120  Dword  00000000
+        Relocation Directory Size     00000124  Dword  00000000
+        Debug Directory RVA           00000128  Dword  00000000
+        Debug Directory Size          0000012C  Dword  00000000
+        Architecture Directory RVA    00000130  Dword  00000000
+        Architecture Directory Size   00000134  Dword  00000000
+        Global Pointer RVA            00000138  Dword  00000000
+        Global Pointer Size           0000013C  Dword  00000000
+        TLS Directory RVA             00000140  Dword  00000000
+        TLS Directory Size            00000144  Dword  00000000
+        Load Config Directory RVA     00000148  Dword  00000000
+        Load Config Directory Size    0000014C  Dword  00000000
+        Bound Import Directory RVA    00000150  Dword  00000000
+        Bound Import Directory Size   00000154  Dword  00000000
+        Import Address Table RVA      00000158  Dword  00000000
+        Import Address Table Size     0000015C  Dword  00000000
+        Delay Import Directory RVA    00000160  Dword  00000000
+        Delay Import Directory Size   00000164  Dword  00000000
+        .NET MetaData Directory RVA   00000168  Dword  00000000
+        .NET MetaData Directory Size  0000016C  Dword  00000000
+        Reserved RVA                  00000170  Dword  00000000
+        Reserved Size                 00000174  Dword  00000000
+  [Section Headers]
+    Name   Virtual Size  Virtual Address  Raw Size  Raw Address  Reloc Address  Linenumbers  Relocs N  Lines N  Characteristics  Entropy  Flags
+    .text  00000200      00001000         00000200  00000200     00000000       00000000     0000      0000     60000020         0.020    CNT_CODE | MEM_EXECUTE | MEM_READ
+  [Resource Directory]
+  [Import Editor]
+  [Export Editor]
+  [Relocations and TLS]
+  [Rebuilder]
+  [Address Converter]
+  [Disassembler]
+  [Strings]
+  [Hex Editor]
+  [Bookmarks]
+  [Compare]
+  [Search]

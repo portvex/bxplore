@@ -1,0 +1,61 @@
+[File]
+  Property          Value
+  File Type         ELF64 shared object / PIE for x86-64
+  Byte Order        little endian
+  OS ABI            System V
+  Entry Point       0
+  Needed Libraries  ELF...
+  [ELF Header]
+    Member                  Offset    Size     Value             Meaning
+    e_ident[EI_MAG]         00000000  Dword    7F454C46          \x7FELF
+    e_ident[EI_CLASS]       00000004  Byte     02                ELF64
+    e_ident[EI_DATA]        00000005  Byte     01                Little endian
+    e_ident[EI_VERSION]     00000006  Byte     01
+    e_ident[EI_OSABI]       00000007  Byte     00                System V
+    e_ident[EI_ABIVERSION]  00000008  Byte     00
+    e_ident[EI_PAD]         00000009  7 bytes  00000000000000
+    e_type                  00000010  Word     0003              ET_DYN (shared object / PIE)
+    e_machine               00000012  Word     003E              x86-64
+    e_version               00000014  Dword    00000001
+    e_entry                 00000018  Qword    0000000000000000
+    e_phoff                 00000020  Qword    0000000000000040
+    e_shoff                 00000028  Qword    0000000000000300
+    e_flags                 00000030  Dword    00000000
+    e_ehsize                00000034  Word     0040
+    e_phentsize             00000036  Word     0038
+    e_phnum                 00000038  Word     3
+    e_shentsize             0000003A  Word     0040
+    e_shnum                 0000003C  Word     4
+    e_shstrndx              0000003E  Word     3
+  [Program Headers (3)]
+    Type      Type Name  Flags     Offset            VirtAddr          PhysAddr          FileSize          MemSize           Align             Perm
+    00000001  LOAD       00000006  0000000000000000  0000000000000000  0000000000000000  0000000000000400  0000000000000400  0000000000001000  W | R
+    00000002  DYNAMIC    00000006  0000000000000200  0000000000000200  0000000000000200  0000000000000080  0000000000000080  0000000000000008  W | R
+    00000004  NOTE       00000004  00000000000002C0  00000000000002C0  00000000000002C0  0000000000000020  0000000000000020  0000000000000004  R
+  [Section Headers (4)]
+    #  Name       Name Idx  Type      Type Name  Flags             Address           Offset            Size              Link      Info      Align             EntSize           Flag Names
+    0             00000000  00000000  NULL       0000000000000000  0000000000000000  0000000000000000  0000000000000000  00000000  00000000  0000000000000000  0000000000000000
+    1  .dynstr    00000001  00000003  STRTAB     0000000000000000  0000000000000280  0000000000000280  0000000000000027  00000000  00000000  0000000000000000  0000000000000000
+    2  .dynamic   00000009  00000006  DYNAMIC    0000000000000000  0000000000000200  0000000000000200  0000000000000080  00000000  00000000  0000000000000000  0000000000000000
+    3  .shstrtab  00000012  00000003  STRTAB     0000000000000000  00000000000002E0  00000000000002E0  000000000000001C  00000000  00000000  0000000000000000  0000000000000000
+  [Dynamic Section (6)]
+    Tag               Tag Name  Value             Meaning
+    0000000000000001  NEEDED    0000000000000001  ELF...
+    000000000000000E  SONAME    000000000000000B
+    000000000000001D  RUNPATH   0000000000000019
+    0000000000000005  STRTAB    0000000000000280
+    000000000000000A  STRSZ     0000000000000027
+    0000000000000000  NULL      0000000000000000
+  [Notes]
+    Offset    Owner  Type  Size  Description
+    000002C0         0     0
+    000002CC         0     0
+  [Dynamic Editor]
+  [Section Editor]
+  [Address Converter]
+  [Disassembler]
+  [Strings]
+  [Hex Editor]
+  [Bookmarks]
+  [Compare]
+  [Search]

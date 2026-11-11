@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=bxplore
+GenericName=Binary eXplorer
+Comment=Viewer and editor for PE, ELF and Mach-O files
+Exec=bxplore %F
+Icon=io.github.bxplore.Bxplore
+Terminal=false
+Categories=Development;Debugger;
+Keywords=PE;ELF;Mach-O;hex;disassembler;
+MimeType=application/x-executable;application/x-pie-executable;application/x-sharedlib;application/x-object;application/x-archive;application/x-core;application/vnd.microsoft.portable-executable;application/x-msdownload;application/x-dosexec;application/x-ms-dos-executable;application/x-mach-binary;application/x-mach-o-executable;

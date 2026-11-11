@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.bxplore.Bxplore</id>
+  <name>bxplore</name>
+  <summary>Viewer and editor for PE, ELF and Mach-O files</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.bxplore"><name>bxplore contributors</name></developer>
+  <description>
+    <p>bxplore shows the structure of Windows, Linux and macOS executables and lets you edit it: headers, sections, imports, exports, resources, relocations, signatures and more, with a hex editor and a disassembler.</p>
+  </description>
+  <launchable type="desktop-id">io.github.bxplore.Bxplore.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

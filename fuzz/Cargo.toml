@@ -1,0 +1,74 @@
+[package]
+name = "bxplore-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+bxplore = { path = "..", default-features = false }
+
+# Keep this crate out of the parent workspace so `cargo build` ignores it.
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "parse_any"
+path = "fuzz_targets/parse_any.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_each"
+path = "fuzz_targets/parse_each.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pe_edit"
+path = "fuzz_targets/pe_edit.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "resource_previews"
+path = "fuzz_targets/resource_previews.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "elf_edit"
+path = "fuzz_targets/elf_edit.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "macho_edit"
+path = "fuzz_targets/macho_edit.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "queries"
+path = "fuzz_targets/queries.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decoders"
+path = "fuzz_targets/decoders.rs"
+test = false
+doc = false
+bench = false

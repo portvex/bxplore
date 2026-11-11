@@ -1,0 +1,196 @@
+use crate::model::Names;
+
+pub const MACHINE: Names = &[
+    (0x0, "Unknown"),
+    (0x14c, "Intel 386"),
+    (0x8664, "AMD64 (x64)"),
+    (0x1c0, "ARM"),
+    (0x1c2, "ARM Thumb"),
+    (0x1c4, "ARM Thumb-2 (ARMNT)"),
+    (0xaa64, "ARM64"),
+    (0x200, "Intel Itanium"),
+    (0xebc, "EFI Byte Code"),
+    (0x5032, "RISC-V 32"),
+    (0x5064, "RISC-V 64"),
+    (0x6264, "LoongArch 64"),
+    (0x166, "MIPS R4000"),
+    (0x1f0, "PowerPC"),
+];
+
+pub const FILE_CHARS: Names = &[
+    (0x0001, "RELOCS_STRIPPED"),
+    (0x0002, "EXECUTABLE_IMAGE"),
+    (0x0004, "LINE_NUMS_STRIPPED"),
+    (0x0008, "LOCAL_SYMS_STRIPPED"),
+    (0x0010, "AGGRESSIVE_WS_TRIM"),
+    (0x0020, "LARGE_ADDRESS_AWARE"),
+    (0x0080, "BYTES_REVERSED_LO"),
+    (0x0100, "32BIT_MACHINE"),
+    (0x0200, "DEBUG_STRIPPED"),
+    (0x0400, "REMOVABLE_RUN_FROM_SWAP"),
+    (0x0800, "NET_RUN_FROM_SWAP"),
+    (0x1000, "SYSTEM"),
+    (0x2000, "DLL"),
+    (0x4000, "UP_SYSTEM_ONLY"),
+    (0x8000, "BYTES_REVERSED_HI"),
+];
+
+pub const OPT_MAGIC: Names = &[(0x10b, "PE32"), (0x20b, "PE32+ (64 bit)"), (0x107, "ROM image")];
+
+pub const SUBSYSTEM: Names = &[
+    (0, "Unknown"),
+    (1, "Native"),
+    (2, "Windows GUI"),
+    (3, "Windows Console"),
+    (5, "OS/2 Console"),
+    (7, "POSIX Console"),
+    (9, "Windows CE GUI"),
+    (10, "EFI Application"),
+    (11, "EFI Boot Service Driver"),
+    (12, "EFI Runtime Driver"),
+    (13, "EFI ROM"),
+    (14, "Xbox"),
+    (16, "Windows Boot Application"),
+];
+
+pub const DLL_CHARS: Names = &[
+    (0x0020, "HIGH_ENTROPY_VA"),
+    (0x0040, "DYNAMIC_BASE"),
+    (0x0080, "FORCE_INTEGRITY"),
+    (0x0100, "NX_COMPAT"),
+    (0x0200, "NO_ISOLATION"),
+    (0x0400, "NO_SEH"),
+    (0x0800, "NO_BIND"),
+    (0x1000, "APPCONTAINER"),
+    (0x2000, "WDM_DRIVER"),
+    (0x4000, "GUARD_CF"),
+    (0x8000, "TERMINAL_SERVER_AWARE"),
+];
+
+pub const SECTION_CHARS: Names = &[
+    (0x0000_0008, "TYPE_NO_PAD"),
+    (0x0000_0020, "CNT_CODE"),
+    (0x0000_0040, "CNT_INITIALIZED_DATA"),
+    (0x0000_0080, "CNT_UNINITIALIZED_DATA"),
+    (0x0000_0200, "LNK_INFO"),
+    (0x0000_0800, "LNK_REMOVE"),
+    (0x0000_1000, "LNK_COMDAT"),
+    (0x0000_8000, "GPREL"),
+    (0x0100_0000, "LNK_NRELOC_OVFL"),
+    (0x0200_0000, "MEM_DISCARDABLE"),
+    (0x0400_0000, "MEM_NOT_CACHED"),
+    (0x0800_0000, "MEM_NOT_PAGED"),
+    (0x1000_0000, "MEM_SHARED"),
+    (0x2000_0000, "MEM_EXECUTE"),
+    (0x4000_0000, "MEM_READ"),
+    (0x8000_0000, "MEM_WRITE"),
+];
+
+pub const DIR_NAMES: [&str; 16] = [
+    "Export Directory",
+    "Import Directory",
+    "Resource Directory",
+    "Exception Directory",
+    "Security Directory",
+    "Relocation Directory",
+    "Debug Directory",
+    "Architecture Directory",
+    "Global Pointer",
+    "TLS Directory",
+    "Load Config Directory",
+    "Bound Import Directory",
+    "Import Address Table",
+    "Delay Import Directory",
+    ".NET MetaData Directory",
+    "Reserved",
+];
+
+pub const DEBUG_TYPE: Names = &[
+    (0, "Unknown"),
+    (1, "COFF"),
+    (2, "CodeView"),
+    (3, "FPO"),
+    (4, "Misc"),
+    (5, "Exception"),
+    (6, "Fixup"),
+    (7, "OMAP to source"),
+    (8, "OMAP from source"),
+    (9, "Borland"),
+    (10, "Reserved"),
+    (11, "CLSID"),
+    (12, "VC Feature"),
+    (13, "POGO"),
+    (14, "ILTCG"),
+    (15, "MPX"),
+    (16, "Repro"),
+    (17, "Embedded Portable PDB"),
+    (19, "PDB Checksum"),
+    (20, "Extended DLL Characteristics"),
+];
+
+pub const RELOC_TYPE: Names = &[
+    (0, "ABSOLUTE"),
+    (1, "HIGH"),
+    (2, "LOW"),
+    (3, "HIGHLOW"),
+    (4, "HIGHADJ"),
+    (5, "MIPS_JMPADDR / ARM_MOV32"),
+    (7, "THUMB_MOV32 / RISCV_LOW12I"),
+    (8, "RISCV_LOW12S"),
+    (9, "IA64_IMM64 / MIPS_JMPADDR16"),
+    (10, "DIR64"),
+];
+
+pub const GUARD_FLAGS: Names = &[
+    (0x0000_0100, "CF_INSTRUMENTED"),
+    (0x0000_0200, "CFW_INSTRUMENTED"),
+    (0x0000_0400, "CF_FUNCTION_TABLE_PRESENT"),
+    (0x0000_0800, "SECURITY_COOKIE_UNUSED"),
+    (0x0000_1000, "PROTECT_DELAYLOAD_IAT"),
+    (0x0000_2000, "DELAYLOAD_IAT_IN_ITS_OWN_SECTION"),
+    (0x0000_4000, "CF_EXPORT_SUPPRESSION_INFO_PRESENT"),
+    (0x0000_8000, "CF_ENABLE_EXPORT_SUPPRESSION"),
+    (0x0001_0000, "CF_LONGJUMP_TABLE_PRESENT"),
+    (0x0002_0000, "RF_INSTRUMENTED"),
+    (0x0004_0000, "RF_ENABLE"),
+    (0x0008_0000, "RF_STRICT"),
+    (0x0010_0000, "RETPOLINE_PRESENT"),
+    (0x0040_0000, "EH_CONTINUATION_TABLE_PRESENT"),
+    (0x0080_0000, "XFG_ENABLED"),
+];
+
+pub const CLR_FLAGS: Names = &[
+    (0x1, "ILONLY"),
+    (0x2, "32BITREQUIRED"),
+    (0x4, "IL_LIBRARY"),
+    (0x8, "STRONGNAMESIGNED"),
+    (0x10, "NATIVE_ENTRYPOINT"),
+    (0x10000, "TRACKDEBUGDATA"),
+    (0x20000, "32BITPREFERRED"),
+];
+
+pub const CERT_TYPE: Names = &[(1, "X.509"), (2, "PKCS#7 SignedData (Authenticode)"), (3, "Reserved"), (4, "Terminal Server Protocol Stack")];
+
+pub const RES_TYPES: &[(u32, &str)] = &[
+    (1, "Cursors"),
+    (2, "Bitmaps"),
+    (3, "Icons"),
+    (4, "Menus"),
+    (5, "Dialogs"),
+    (6, "String Tables"),
+    (7, "Font Directories"),
+    (8, "Fonts"),
+    (9, "Accelerators"),
+    (10, "RCData"),
+    (11, "Message Tables"),
+    (12, "Cursor Groups"),
+    (14, "Icon Groups"),
+    (16, "Version Info"),
+    (17, "Dialog Includes"),
+    (19, "Plug and Play"),
+    (20, "VXD"),
+    (21, "Animated Cursors"),
+    (22, "Animated Icons"),
+    (23, "HTML"),
+    (24, "Manifests"),
+];

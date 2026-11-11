@@ -1,0 +1,26 @@
+# Wraps the prebuilt standalone executable; nothing is compiled in the sandbox.
+app-id: @ID@
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: bxplore
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # The files to inspect can be anywhere, and edits are saved next to them.
+  - --filesystem=host
+modules:
+  - name: bxplore
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bxplore /app/bin/bxplore
+      - install -Dm644 bxplore.desktop /app/share/applications/@ID@.desktop
+      - install -Dm644 metainfo.xml /app/share/metainfo/@ID@.metainfo.xml
+      - install -Dm644 icon-256.png /app/share/icons/hicolor/256x256/apps/@ID@.png
+      - install -Dm644 icon-512.png /app/share/icons/hicolor/512x512/apps/@ID@.png
+      - install -Dm644 icon.svg /app/share/icons/hicolor/scalable/apps/@ID@.svg
+    sources:
+      - type: dir
+        path: stage
