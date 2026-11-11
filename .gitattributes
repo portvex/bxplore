@@ -1,0 +1,5 @@
+# Test inputs are compared byte for byte (hashes, signatures, parser output), so
+# Git must never convert their line endings, e.g. to CRLF on a Windows checkout.
+tests/fixtures/** -text
+fuzz/seeds/** -text
+fuzz/regressions/** -text
