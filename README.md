@@ -288,6 +288,10 @@ can be merged once the "CI result" check passes; no review approval is needed. F
 deleting `main` are blocked. Release tags (`v*`) cannot be moved or deleted, and only the
 repository admin can create them.
 
+Dependabot (`.github/dependabot.yml`) opens weekly pull requests for the Rust dependencies of
+the crate and of `fuzz/`, and for the GitHub Actions the workflows use. Minor and patch updates
+are grouped; a major update gets its own pull request.
+
 The minimum supported Rust version is 1.95 (`rust-version` in `Cargo.toml`), set by the
 GUI stack. The `selftest` feature (off by default) adds environment driven screenshots
 of the GUI for development: `BXPLORE_SCREENSHOT=<png>` with `BXPLORE_SELECT`, `BXPLORE_ROW`,
