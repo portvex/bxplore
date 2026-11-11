@@ -23,10 +23,10 @@ jobs:
       matrix:
         target: [parse_any, parse_each, pe_edit, resource_previews, elf_edit, macho_edit, queries, decoders, structured, differential]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install nightly --profile minimal --component llvm-tools-preview
       - run: cargo install cargo-fuzz --locked
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: fuzz/corpus/${{ matrix.target }}
           key: corpus-${{ matrix.target }}-${{ github.run_id }}
@@ -36,7 +36,7 @@ jobs:
       - name: Coverage
         if: always()
         run: fuzz/coverage.sh ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: fuzz-${{ matrix.target }}

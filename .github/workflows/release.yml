@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tag matches Cargo.toml
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tools
         run: |
           rustup update stable --no-self-update && rustup default stable
@@ -60,7 +60,7 @@ jobs:
           mkdir -p "$HOME/zig" && tar -xf "$RUNNER_TEMP/zig.tar.xz" -C "$HOME/zig" --strip-components=1
           cargo install --locked cargo-zigbuild --version 0.24.0
       - run: packaging/linux/build.sh bin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-bin
           path: dist/*
@@ -80,8 +80,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: linux-bin
           path: dist
@@ -94,7 +94,7 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak install --user -y --noninteractive --arch=${{ matrix.arch }} flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
       - run: ARCHS=${{ matrix.arch }} packaging/linux/build.sh flatpak
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flatpak-${{ matrix.arch }}
           path: dist/*.flatpak
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tools
         run: |
           sudo apt-get update -q
@@ -127,7 +127,7 @@ jobs:
       - run: packaging/windows/build.sh
         env:
           WINDOWS_SIGN_PASSWORD: ${{ secrets.WINDOWS_SIGN_PASSWORD }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*
@@ -141,7 +141,7 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tools
         run: |
           rustup update stable --no-self-update && rustup default stable
@@ -174,7 +174,7 @@ jobs:
             --password "$NOTARY_PASSWORD" --keychain "$kc"
           echo "MACOS_NOTARY_PROFILE=bxplore-notary" >> "$GITHUB_ENV"
       - run: packaging/macos/build.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*.dmg
@@ -188,7 +188,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
