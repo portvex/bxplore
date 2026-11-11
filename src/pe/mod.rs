@@ -843,12 +843,14 @@ fn reloc_dir(data: &[u8], pe: &Pe) -> Option<Node> {
     let rd = Rd::new(data, LE);
     let (rva, size) = pe.dir(data, 5);
     let base = (rva != 0).then(|| pe.rva_to_off(rva)).flatten()?;
-    let end = base + size as usize;
+    // Entries are read only inside the directory and the file, whatever the size fields claim.
+    let end = base.saturating_add(size as usize).min(data.len());
     let mut g = Grid::new(&["Block RVA", "Block Size", "Entry Offset", "Value", "Type", "Target RVA"]);
     let mut off = base;
     let mut blocks = 0;
     let mut total = 0usize;
-    while off + 8 <= end && rd.has(off, 8) {
+    let mut cut = None;
+    while end.saturating_sub(off) >= 8 {
         let page = rd.u32(off);
         let bsize = rd.u32(off + 4) as usize;
         if bsize < 8 {
@@ -856,6 +858,11 @@ fn reloc_dir(data: &[u8], pe: &Pe) -> Option<Node> {
         }
         blocks += 1;
         let n = (bsize - 8) / 2;
+        let present = n.min((end - off - 8) / 2);
+        if present < n && cut.is_none() {
+            cut = Some((off, n, present));
+        }
+        let n = present;
         total += n;
         for i in 0..n {
             if g.rows.len() >= MAX_ROWS {
@@ -876,10 +883,16 @@ fn reloc_dir(data: &[u8], pe: &Pe) -> Option<Node> {
                 Some((eo, 2)),
             );
         }
-        off += bsize;
+        off = off.saturating_add(bsize);
     }
     let title = format!("Relocation Directory ({blocks} blocks, {total} entries)");
     let mut n = Node::grid(title, g).with_span(base, size as usize);
+    if let Some((at, claimed, present)) = cut {
+        n.children.push(Node::text(
+            "Note",
+            format!("The block at offset {at:08X} claims {claimed} entries, but only {present} fit inside the directory and the file."),
+        ));
+    }
     if total > MAX_ROWS {
         n.children.push(Node::text("Note", format!("Only the first {MAX_ROWS} of {total} relocation entries are listed.")));
     }

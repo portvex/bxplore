@@ -1011,3 +1011,17 @@ fn chained_fixups_are_found_by_address_after_zero_fill() {
     assert_eq!((fixups.title.as_str(), row), ("Fixups (1)", vec!["__AUTH", "100004008", "rebase", "1234"]));
     assert_eq!(g.spans[0], Some((0x2008, 8)));
 }
+
+/// A relocation block whose size field claims 547 million entries in a 4 KB
+/// file: the view lists the entries the directory really holds, not 200 000
+/// rows of zeros read past the end (which cost 135 MB of memory).
+#[test]
+fn a_relocation_block_is_read_only_inside_the_file() {
+    let input = std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fuzz/regressions/parse_any/relocation_block_past_the_file.bin")).unwrap();
+    let parsed = bxplore::analysis::parse(&input);
+    let relocs = parsed.root.children.iter().find(|n| n.title.starts_with("Relocation Directory")).expect("the file has a relocation directory");
+    assert_eq!(relocs.title, "Relocation Directory (1 blocks, 18 entries)");
+    let bxplore::model::View::Grid(g) = &relocs.view else { panic!("the relocations are a grid") };
+    assert_eq!(g.rows.len(), 18);
+    assert!(relocs.children.iter().any(|c| matches!(&c.view, bxplore::model::View::Text(t) if t.contains("claims 547397788 entries"))));
+}
