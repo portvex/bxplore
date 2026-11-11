@@ -117,8 +117,19 @@ jobs:
           path: dist
       - name: Tools
         run: |
-          sudo snap install snapcraft --classic
-          sudo snap install lxd || sudo snap refresh lxd
+          # snapd on a fresh runner can still be starting, or fail to reach the store at first.
+          retry() {
+            for i in 1 2 3 4 5; do
+              "$@" && return 0
+              echo "attempt $i failed: $*"
+              [ "$i" = 5 ] || sleep 20
+            done
+            return 1
+          }
+          retry sudo snap wait system seed.loaded
+          retry sudo snap install snapcraft --classic
+          retry sudo snap install lxd
+          sudo lxd waitready --timeout=120
           sudo lxd init --auto
           sudo usermod -aG lxd "$USER"
           # Docker on the runner drops forwarded traffic, which cuts the LXD build container off the network.
