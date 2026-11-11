@@ -164,7 +164,50 @@ the one file. How static the result is depends on the platform (set in `.cargo/c
 universal DMG for macOS, and a standalone executable, Flatpak and snap for Linux, each for
 x86_64 and ARM64. See `packaging/README.md`.
 
-On Linux with Nix: `nix run .` or `nix build .` (the flake is Linux only).
+### Nix
+
+The flake builds for `x86_64-linux` and `aarch64-linux`. Run it without installing, or
+install it into your profile:
+
+    nix run github:portvex/bxplore
+    nix profile install github:portvex/bxplore
+
+To add it to your own flake, take it as an input and use its package. On NixOS:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    bxplore = {
+      url = "github:portvex/bxplore";            # or "github:portvex/bxplore/v0.1.0" for a release
+      inputs.nixpkgs.follows = "nixpkgs";        # build against your nixpkgs, not a second copy
+    };
+  };
+
+  outputs = { nixpkgs, bxplore, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./configuration.nix
+        ({ pkgs, ... }: {
+          environment.systemPackages = [ bxplore.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+        })
+      ];
+    };
+  };
+}
+```
+
+With Home Manager, put the same package in `home.packages` instead. The package installs the
+desktop entry and icons, so bxplore appears in the application menu and under "Open With" for
+executable files.
+
+On NixOS the program runs as it is. With Nix on another distribution, the GUI needs
+[nixGL](https://github.com/nix-community/nixGL) to find the graphics drivers (`nixGL bxplore`);
+`bxplore --dump` works without it.
+
+For development, `nix develop` opens a shell with the Rust toolchain, clippy, rustfmt and
+rust-analyzer, and `nix build .` builds the checkout.
 
 ## Limits
 

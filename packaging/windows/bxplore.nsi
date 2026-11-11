@@ -1,5 +1,5 @@
 ; NSIS installer for bxplore. Built by packaging/windows/build.sh, which passes
-; VERSION, ARCH (x64 or arm64), EXE, ICON, OUT, TITLE, NAME, PUBLISHER.
+; VERSION, VERSION_NUM (numeric part of VERSION), ARCH (x64 or arm64), EXE, ICON, OUT, TITLE, NAME, PUBLISHER.
 Unicode true
 !include "MUI2.nsh"
 !include "x64.nsh"
@@ -11,7 +11,7 @@ InstallDirRegKey HKLM "Software\${TITLE}" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 
-VIProductVersion "${VERSION}.0"
+VIProductVersion "${VERSION_NUM}.0"
 VIAddVersionKey "ProductName" "${TITLE}"
 VIAddVersionKey "CompanyName" "${PUBLISHER}"
 VIAddVersionKey "FileDescription" "${TITLE} installer"

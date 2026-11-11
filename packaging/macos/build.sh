@@ -19,7 +19,7 @@ fi
 export MACOSX_DEPLOYMENT_TARGET=11.0
 cd "$ROOT"
 for t in aarch64-apple-darwin x86_64-apple-darwin; do
-  cargo build --profile standalone --target "$t"
+  cargo build --locked --profile standalone --target "$t"
 done
 
 work="$ROOT/target/packaging/macos"
@@ -29,7 +29,7 @@ lipo -create -output "$app/Contents/MacOS/$APP_NAME" \
   "target/aarch64-apple-darwin/standalone/$APP_NAME" "target/x86_64-apple-darwin/standalone/$APP_NAME"
 
 sed -e "s/@TITLE@/$APP_TITLE/g" -e "s/@ID@/$APP_ID/g" -e "s/@NAME@/$APP_NAME/g" \
-  -e "s/@VERSION@/$APP_VERSION/g" -e "s/@PUBLISHER@/$APP_PUBLISHER/g" \
+  -e "s/@VERSION@/$APP_VERSION/g" -e "s/@VERSION_NUM@/$APP_VERSION_NUM/g" -e "s/@PUBLISHER@/$APP_PUBLISHER/g" \
   packaging/macos/Info.plist.in > "$app/Contents/Info.plist"
 
 set="$work/$APP_NAME.iconset"

@@ -9,3 +9,6 @@ APP_LICENSE="MIT"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+# Numeric part only (0.2.0-rc1 -> 0.2.0), for fields that accept nothing else:
+# Windows VERSIONINFO, NSIS VIProductVersion, macOS CFBundleVersion.
+APP_VERSION_NUM="${APP_VERSION%%-*}"

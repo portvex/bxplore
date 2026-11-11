@@ -10,7 +10,7 @@
 #   WINDOWS_SIGN_TS        timestamp server (default http://timestamp.digicert.com)
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/../common.sh"
-. "$HOME/.cargo/env"
+[ ! -f "$HOME/.cargo/env" ] || . "$HOME/.cargo/env"
 export PATH="$HOME/llvm-mingw/bin:$PATH"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$HOME/target}"
 DIST="${DIST:-$ROOT/dist}"
@@ -31,7 +31,7 @@ for spec in x64:x86_64-pc-windows-gnu:x86_64-w64-mingw32 arm64:aarch64-pc-window
   rm -rf "$w" && mkdir -p "$w"
 
   # Icon and version information, linked into the executable.
-  v4="$(echo "$APP_VERSION" | tr . ,),0"
+  v4="$(echo "$APP_VERSION_NUM" | tr . ,),0"
   sed -e "s|@ICON@|$ROOT/packaging/icons/bxplore.ico|" -e "s/@V4@/$v4/g" -e "s/@VERSION@/$APP_VERSION/g" \
     -e "s/@TITLE@/$APP_TITLE/g" -e "s/@NAME@/$APP_NAME/g" -e "s/@PUBLISHER@/$APP_PUBLISHER/g" \
     "$ROOT/packaging/windows/bxplore.rc.in" > "$w/bxplore.rc"
@@ -60,7 +60,7 @@ for spec in x64:x86_64-pc-windows-gnu:x86_64-w64-mingw32 arm64:aarch64-pc-window
   rm -f "$zip" && (cd "$w" && zip -q -9 "$zip" "$APP_NAME.exe" README.md)
 
   setup="$DIST/$APP_NAME-$APP_VERSION-windows-$arch-setup.exe"
-  makensis -V2 -DVERSION="$APP_VERSION" -DARCH="$arch" -DEXE="$exe" -DICON="$ROOT/packaging/icons/bxplore.ico" \
+  makensis -V2 -DVERSION="$APP_VERSION" -DVERSION_NUM="$APP_VERSION_NUM" -DARCH="$arch" -DEXE="$exe" -DICON="$ROOT/packaging/icons/bxplore.ico" \
     -DOUT="$setup" -DTITLE="$APP_TITLE" -DNAME="$APP_NAME" -DPUBLISHER="$APP_PUBLISHER" "$ROOT/packaging/windows/bxplore.nsi"
   sign "$setup"
   echo "built $zip and $setup"

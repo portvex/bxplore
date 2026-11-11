@@ -9,7 +9,7 @@
 # and architectures with ARCHS="x86_64 aarch64" (the default).
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/../common.sh"
-. "$HOME/.cargo/env"
+[ ! -f "$HOME/.cargo/env" ] || . "$HOME/.cargo/env"
 export PATH="$HOME/zig:$PATH"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$HOME/target}"
 DIST="${DIST:-$ROOT/dist}"
