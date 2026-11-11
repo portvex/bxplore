@@ -176,7 +176,10 @@ jobs:
 
   macos:
     needs: check
-    runs-on: macos-15
+    # Intel: GitHub often has no free Apple Silicon runner. build.sh cross-compiles both
+    # architectures, so the DMG is universal either way. GitHub retires macos-15-intel
+    # around August 2027; move back to an arm64 label (macos-latest) by then.
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
