@@ -49,10 +49,12 @@ fn check_runs(path: &Path) {
 fn add_change_remove_commands() {
     let dir = std::env::temp_dir().join(format!("bxplore-macho-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    // The linker leaves only 32 bytes of header padding by default; like
-    // install_name_tool, the editor needs the room to exist.
+    // The linker leaves little header padding by default (32 bytes on arm64, 64 on
+    // x86_64); like install_name_tool, the editor needs the room to exist. The path is
+    // long enough not to fit on either architecture.
     let Some(tight) = build(&dir, &[]) else { return };
-    let err = macho_edit::add_path_command(&mut tight.clone(), LC_LOAD_DYLIB, "/usr/lib/libz.1.dylib").unwrap_err();
+    let long = format!("/usr/lib/{}.dylib", "x".repeat(100));
+    let err = macho_edit::add_path_command(&mut tight.clone(), LC_LOAD_DYLIB, &long).unwrap_err();
     assert!(err.contains("not enough header padding"), "{err}");
     let Some(orig) = build(&dir, &["-Wl,-headerpad,0x400"]) else { return };
     let edited = dir.join("hello_edited");
@@ -112,7 +114,8 @@ fn universal_binary_edits_every_slice() {
 fn signature_page_hashes_detect_tampering() {
     let dir = std::env::temp_dir().join(format!("bxplore-macho-sig-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let Some(orig) = build(&dir, &[]) else { return };
+    // The linker signs arm64 output on its own but x86_64 output only when asked.
+    let Some(orig) = build(&dir, &["-Wl,-adhoc_codesign"]) else { return };
     let mut text = String::new();
     bxplore::analysis::dump(&bxplore::analysis::parse(&orig).root, 0, &mut text);
     assert!(text.contains("Page hashes: OK"), "a freshly linked binary must verify:\n{text}");
