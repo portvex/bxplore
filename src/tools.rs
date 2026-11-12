@@ -97,7 +97,8 @@ impl Default for Rebuild {
 
 enum Preview {
     Text(String),
-    Image(egui::TextureHandle),
+    /// The texture, and the image's own width and height before any scaling.
+    Image(egui::TextureHandle, (u32, u32)),
 }
 
 #[derive(Default)]
@@ -770,9 +771,9 @@ impl App {
             _ => None,
         };
         let image = |bytes: &[u8], icon: bool| {
-            resources::decode_image(bytes, icon).map(|(w, h, rgba)| {
+            resources::decode_image(bytes, icon, ctx.input(|i| i.max_texture_side)).map(|(w, h, rgba, original)| {
                 let img = egui::ColorImage::from_rgba_unmultiplied([w, h], &rgba);
-                Preview::Image(ctx.load_texture("resource_preview", img, egui::TextureOptions::NEAREST))
+                Preview::Image(ctx.load_texture("resource_preview", img, egui::TextureOptions::NEAREST), original)
             })
         };
         let fallback = || {
@@ -983,10 +984,14 @@ impl App {
                 Some(Preview::Text(t)) => {
                     ui.add(egui::Label::new(RichText::new(t).monospace()).selectable(true).extend());
                 }
-                Some(Preview::Image(tex)) => {
+                Some(Preview::Image(tex, (w, h))) => {
                     let size = tex.size_vec2();
                     let scale = (192.0 / size.x.max(size.y)).clamp(1.0, 4.0).floor();
-                    ui.label(format!("{} x {} pixels (shown at {scale}x)", size.x, size.y));
+                    if [*w as usize, *h as usize] == tex.size() {
+                        ui.label(format!("{w} x {h} pixels (shown at {scale}x)"));
+                    } else {
+                        ui.label(format!("{w} x {h} pixels (scaled down to {} x {} to fit)", size.x, size.y));
+                    }
                     ui.add(egui::Image::from_texture(egui::load::SizedTexture::new(tex.id(), size * scale)));
                 }
                 None => {}
