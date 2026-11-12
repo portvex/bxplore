@@ -365,8 +365,11 @@ pub fn resource_previews(data: &[u8]) {
     let _ = resources::utf16_text(data);
     // Image decoding is bounded so a tiny input cannot demand a huge bitmap.
     if data.len() <= 1 << 16 {
-        let _ = resources::decode_image(data, false);
-        let _ = resources::decode_image(data, true);
+        for icon in [false, true] {
+            if let Some((w, h, rgba, _)) = resources::decode_image(data, icon, 2048) {
+                assert!(w <= 2048 && h <= 2048 && rgba.len() == w * h * 4, "{w}x{h} preview with {} bytes", rgba.len());
+            }
+        }
     }
 }
 

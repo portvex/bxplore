@@ -498,11 +498,26 @@ pub fn group_icon(bytes: &[u8]) -> String {
 
 const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
 
-/// Decode an RT_ICON or RT_BITMAP resource to RGBA pixels.
-pub fn decode_image(bytes: &[u8], is_icon: bool) -> Option<(usize, usize, Vec<u8>)> {
+/// Memory a resource preview may decode into. A few header bytes can claim
+/// any size: a 368-byte RLE bitmap claimed 65282x2619 pixels (684 MB).
+pub const MAX_IMAGE_BYTES: u64 = 64 << 20;
+
+/// Decode with the memory limit; an image claiming more fails to decode.
+fn load(bytes: &[u8], format: image::ImageFormat) -> Option<image::DynamicImage> {
+    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), format);
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(MAX_IMAGE_BYTES);
+    reader.limits(limits);
+    reader.decode().ok()
+}
+
+/// Decode an RT_ICON or RT_BITMAP resource to RGBA pixels, scaled down to fit
+/// `max_side` (the largest texture the graphics card takes). The last item is
+/// the image's own width and height, before any scaling.
+pub fn decode_image(bytes: &[u8], is_icon: bool, max_side: usize) -> Option<(usize, usize, Vec<u8>, (u32, u32))> {
     let rd = Rd::new(bytes, LE);
     let img = if bytes.starts_with(PNG_MAGIC) {
-        image::load_from_memory_with_format(bytes, image::ImageFormat::Png).ok()?
+        load(bytes, image::ImageFormat::Png)?
     } else if is_icon {
         let w = rd.u32(4);
         let h = rd.u32(8) / 2;
@@ -515,7 +530,7 @@ pub fn decode_image(bytes: &[u8], is_icon: bool) -> Option<(usize, usize, Vec<u8
         ico.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
         ico.extend_from_slice(&22u32.to_le_bytes());
         ico.extend_from_slice(bytes);
-        image::load_from_memory_with_format(&ico, image::ImageFormat::Ico).ok()?
+        load(&ico, image::ImageFormat::Ico)?
     } else {
         let hdr = rd.u32(0) as usize;
         let bpp = rd.u16(14) as u32;
@@ -534,8 +549,11 @@ pub fn decode_image(bytes: &[u8], is_icon: bool) -> Option<(usize, usize, Vec<u8
         bmp.extend_from_slice(&0u32.to_le_bytes());
         bmp.extend_from_slice(&(offbits as u32).to_le_bytes());
         bmp.extend_from_slice(bytes);
-        image::load_from_memory_with_format(&bmp, image::ImageFormat::Bmp).ok()?
+        load(&bmp, image::ImageFormat::Bmp)?
     };
+    let original = (img.width(), img.height());
+    let side = u32::try_from(max_side).unwrap_or(u32::MAX).max(1);
+    let img = if img.width() > side || img.height() > side { img.thumbnail(side, side) } else { img };
     let rgba = img.to_rgba8();
-    Some((rgba.width() as usize, rgba.height() as usize, rgba.into_raw()))
+    Some((rgba.width() as usize, rgba.height() as usize, rgba.into_raw(), original))
 }
