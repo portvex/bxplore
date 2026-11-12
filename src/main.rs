@@ -16,7 +16,15 @@ fn main() {
                 let parsed = analysis::parse(&data);
                 let mut out = format!("{}: {}\n", path.display(), parsed.description);
                 analysis::dump(&parsed.root, 0, &mut out);
-                print!("{out}");
+                // `print!` panics when the reader has gone away (`bxplore --dump f | head`).
+                // That is not an error: stop quietly, as other command line tools do.
+                use std::io::Write;
+                if let Err(e) = std::io::stdout().lock().write_all(out.as_bytes())
+                    && e.kind() != std::io::ErrorKind::BrokenPipe
+                {
+                    eprintln!("bxplore: {e}");
+                    std::process::exit(1);
+                }
             }
             Err(e) => {
                 eprintln!("{}: {e}", path.display());
