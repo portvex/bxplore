@@ -510,8 +510,8 @@ fn relocations_grow_into_the_tail_of_their_section() {
     let pe = Pe::parse(&orig).unwrap();
     let mut data = orig.clone();
     // Six blocks of 12 bytes on pages of their own: more than the old Size, less than the padding.
-    for i in 0..6 {
-        edit::add_reloc(&mut data, pe.sections[i].va + 0x10 * i as u32 + 1, 10).unwrap();
+    for (i, s) in pe.sections.iter().take(6).enumerate() {
+        edit::add_reloc(&mut data, s.va + 0x10 * i as u32 + 1, 10).unwrap();
     }
     let pe2 = Pe::parse(&data).unwrap();
     assert_eq!((pe2.sections.len(), data.len()), (pe.sections.len(), orig.len()), "no new section, no new bytes");
