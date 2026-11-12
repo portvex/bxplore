@@ -6,7 +6,7 @@ The bxplore website: plain HTML, CSS and JavaScript, with no build tools or depe
 | --- | --- |
 | `index.html` | The page |
 | `style.css` | Styles; dark and light themes use the custom properties at the top |
-| `main.js` | Theme toggle, screenshot gallery, lightbox, install tabs, copy buttons |
+| `main.js` | Theme toggle, screenshot gallery, lightbox, install tabs, copy buttons, and the download picker: it detects the OS and CPU, reads the latest release from the GitHub API, links the Download button to the matching file and lists every file per platform. Without the API it falls back to the releases page |
 | `build.sh` | Assembles `_site/` and checks every referenced asset exists |
 
 The screenshots and icon are not duplicated here. `build.sh` copies them from

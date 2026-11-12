@@ -289,3 +289,34 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
   .js .reveal { opacity: 1; transform: none; transition: none; }
   .btn, .card { transition: none; }
 }
+
+/* Download metadata under the hero button */
+.dl-meta { margin: 14px 0 0; font: 500 13px var(--mono); color: var(--muted); }
+
+/* Release files in the install panes */
+.assets { margin: 0 0 16px; }
+.asset-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.asset-list a {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 14px;
+  padding: 12px 14px; border-radius: 10px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border);
+  transition: border-color .15s ease, background .15s ease;
+}
+.asset-list a:hover { text-decoration: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.asset-list svg {
+  grid-row: span 2; width: 20px; height: 20px; color: var(--accent);
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.asset-main { font-weight: 600; font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.asset-arch { font: 500 12px var(--mono); color: var(--muted); padding: 1px 7px; border: 1px solid var(--border); border-radius: 6px; }
+.asset-meta { grid-column: 2; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.asset-badge {
+  grid-column: 3; grid-row: 1 / span 2; font-size: 12px; font-weight: 600; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px; color: var(--accent-3);
+  background: color-mix(in srgb, var(--accent-3) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-3) 35%, transparent);
+}
+.asset-list li.best a { border-color: color-mix(in srgb, var(--accent-3) 50%, var(--border)); }
+@media (max-width: 560px) {
+  .asset-badge { grid-column: 2; grid-row: auto; justify-self: start; margin-top: 6px; }
+}

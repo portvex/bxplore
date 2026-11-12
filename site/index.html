@@ -69,14 +69,15 @@
           signatures.
         </p>
         <div class="cta">
-          <a class="btn btn-primary" href="https://github.com/portvex/bxplore/releases/latest">
+          <a class="btn btn-primary" data-download href="https://github.com/portvex/bxplore/releases/latest">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 17v3h16v-3"/></svg>
-            Download
+            <span data-download-label>Download</span>
           </a>
           <a class="btn btn-ghost" href="https://github.com/portvex/bxplore">
             View source
           </a>
         </div>
+        <p class="dl-meta" data-download-meta>Latest release on GitHub &middot; <a href="#install">all platforms</a></p>
         <ul class="platforms" aria-label="Supported platforms">
           <li>Windows</li><li>macOS</li><li>Linux</li>
           <li class="sep" aria-hidden="true"></li>
@@ -259,7 +260,7 @@
         <header class="section-head reveal">
           <p class="kicker">Install</p>
           <h2>Get bxplore</h2>
-          <p>Packages for x86_64 and ARM64 are on the <a href="https://github.com/portvex/bxplore/releases/latest">releases page</a>.</p>
+          <p>Packages for x86_64 and ARM64. Pick yours below, or browse the <a href="https://github.com/portvex/bxplore/releases/latest">releases page</a> (with <span data-sums>SHA256SUMS</span>).</p>
         </header>
 
         <div class="install reveal">
@@ -273,11 +274,12 @@
 
           <div class="pane" role="tabpanel" id="pane-win" aria-labelledby="tab-win">
             <p>Download the <b>NSIS installer</b> (<code>-setup.exe</code>) or the <b>portable zip</b>, which holds only <code>bxplore.exe</code>. The installer adds "Open with bxplore" to Explorer's right-click menu.</p>
-            <a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a>
+            <div class="assets" data-assets="windows"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
           </div>
 
           <div class="pane" role="tabpanel" id="pane-mac" aria-labelledby="tab-mac" hidden>
-            <p>Install with Homebrew. You can also download the universal DMG, which runs on both Intel and Apple Silicon.</p>
+            <p>Download the universal DMG, which runs on both Intel and Apple Silicon, or install with Homebrew.</p>
+            <div class="assets" data-assets="macos"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
             <div class="code"><pre><code>brew install --cask portvex/tap/bxplore</code></pre><button class="copy" type="button">Copy</button></div>
             <p class="note">bxplore is not notarized. Open the app the first time with right-click &rarr; Open, or run:</p>
             <div class="code"><pre><code>xattr -dr com.apple.quarantine /Applications/bxplore.app</code></pre><button class="copy" type="button">Copy</button></div>
@@ -285,8 +287,8 @@
 
           <div class="pane" role="tabpanel" id="pane-linux" aria-labelledby="tab-linux" hidden>
             <p>Releases include a <b>standalone executable</b> (also as <code>.tar.gz</code>) and a <b>Flatpak</b>, each for x86_64 and aarch64.</p>
+            <div class="assets" data-assets="linux"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
             <div class="code"><pre><code>flatpak install --user ./bxplore-*-linux-x86_64.flatpak</code></pre><button class="copy" type="button">Copy</button></div>
-            <a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a>
           </div>
 
           <div class="pane" role="tabpanel" id="pane-nix" aria-labelledby="tab-nix" hidden>
@@ -312,7 +314,7 @@
         <h2>Open a binary and look inside.</h2>
         <p>It's free and open source, with nothing to sign up for.</p>
         <div class="cta">
-          <a class="btn btn-primary" href="https://github.com/portvex/bxplore/releases/latest">Download bxplore</a>
+          <a class="btn btn-primary" data-download href="https://github.com/portvex/bxplore/releases/latest"><span data-download-label>Download bxplore</span></a>
           <a class="btn btn-ghost" href="https://github.com/portvex/bxplore">Star on GitHub</a>
         </div>
       </div>
