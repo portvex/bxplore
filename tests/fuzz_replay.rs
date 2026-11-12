@@ -350,8 +350,8 @@ fn resource_seeds_decode() {
     assert!(resources::string_table(&string_table_resource(), 1).contains("string 3"));
     let (bmp, group) = icon_resources();
     assert!(!resources::group_icon(&group).is_empty());
-    assert_eq!(resources::decode_image(&bmp, true).map(|i| (i.0, i.1)), Some((2, 2)));
-    assert_eq!(resources::decode_image(&png_resource(), false).map(|i| (i.0, i.1)), Some((3, 2)));
+    assert_eq!(resources::decode_image(&bmp, true, 8192).map(|i| (i.0, i.1)), Some((2, 2)));
+    assert_eq!(resources::decode_image(&png_resource(), false, 8192).map(|i| (i.0, i.1)), Some((3, 2)));
 }
 
 /// Writes the synthetic files to `fuzz/seeds` as starting corpus for the fuzzers:
@@ -1145,4 +1145,38 @@ fn a_small_file_cannot_use_the_whole_grid_budget() {
     }
     assert!(text(&parsed.root) <= bxplore::macho_dyld::MIN_GRID_BUDGET, "the view of a 3.8 KB file holds {} bytes of text", text(&parsed.root));
     assert!(parsed.root.children.iter().any(|n| n.title.starts_with("Binds (first ") && n.title.ends_with(" shown)")), "the cut is announced");
+}
+
+/// A 368-byte RLE4 bitmap resource claims 65282x2619 pixels: decoding it took
+/// 684 MB, and the 65282-pixel-wide texture crashed the GUI. It is refused now.
+#[test]
+fn a_bitmap_claiming_a_huge_size_is_not_decoded() {
+    let input =
+        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fuzz/regressions/resource_previews/rle_bitmap_claiming_171_million_pixels.bin"))
+            .unwrap();
+    assert!(bxplore::pe::resources::decode_image(&input, false, 8192).is_none());
+    assert!(bxplore::pe::resources::decode_image(&input, true, 8192).is_none());
+}
+
+/// A real bitmap wider than the largest texture is shown scaled down.
+#[test]
+fn a_bitmap_wider_than_a_texture_is_scaled_down() {
+    let (w, h) = (9000u32, 4u32);
+    let stride = (w * 3).div_ceil(4) * 4;
+    let mut dib = vec![0u8; 40];
+    put(&mut dib, 0, &40u32.to_le_bytes());
+    put(&mut dib, 4, &w.to_le_bytes());
+    put(&mut dib, 8, &h.to_le_bytes());
+    put(&mut dib, 12, &1u16.to_le_bytes());
+    put(&mut dib, 14, &24u16.to_le_bytes());
+    dib.extend(std::iter::repeat_n(0x80, (stride * h) as usize));
+    let (sw, sh, rgba, original) = bxplore::pe::resources::decode_image(&dib, false, 8192).expect("the bitmap decodes");
+    assert_eq!(sw, 8192);
+    assert_eq!(original, (9000, 4), "the real size is kept for the label");
+    assert!((1..=4).contains(&sh));
+    assert_eq!(rgba.len(), sw * sh * 4);
+    assert_eq!(&rgba[..4], &[0x80, 0x80, 0x80, 0xff]);
+    let (sw, sh, _, original) = bxplore::pe::resources::decode_image(&dib, false, 16384).unwrap();
+    assert_eq!((sw, sh), (9000, 4), "an image that fits is not scaled");
+    assert_eq!(original, (9000, 4));
 }
