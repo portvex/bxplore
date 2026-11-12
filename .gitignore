@@ -24,3 +24,6 @@ desktop.ini
 # Patch and merge leftovers
 *.orig
 *.rej
+
+# Landing page build output (site/build.sh)
+/_site

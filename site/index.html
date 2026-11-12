@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bxplore - Binary eXplorer</title>
+  <meta name="description" content="A viewer and editor for PE, ELF and Mach-O executables. Every structure as an editable table, next to a hex editor and a disassembler. Windows, macOS and Linux.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0b0e17">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="bxplore - Binary eXplorer">
+  <meta property="og:description" content="View and edit PE, ELF and Mach-O files: headers, imports, exports, resources, signatures, with a hex editor and a disassembler.">
+  <meta property="og:image" content="assets/screenshots/pe-headers.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var t = localStorage.getItem("bxplore-theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav" id="top">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="bxplore home">
+        <img src="assets/icon.svg" alt="" width="28" height="28">
+        <span>bxplore</span>
+      </a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#screens">Screens</a>
+        <a href="#features">Features</a>
+        <a href="#formats">Formats</a>
+        <a href="#install">Install</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Toggle theme">
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+        </button>
+        <a class="icon-btn" href="https://github.com/portvex/bxplore" aria-label="bxplore on GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="fill"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a10.9 10.9 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hexfield" aria-hidden="true"></div>
+      <div class="wrap hero-inner">
+        <p class="eyebrow"><span class="dot"></span> Open source &middot; MIT &middot; Written in Rust</p>
+        <h1>See every byte.<br><span class="grad">Edit what others only show.</span></h1>
+        <p class="lead">
+          bxplore is a viewer and editor for executable files. It shows every structure of a
+          PE, ELF or Mach-O file as a tree of editable tables, next to a hex editor and a
+          disassembler, and it rebuilds imports, exports, resources, sections, relocations and
+          signatures.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" data-download href="https://github.com/portvex/bxplore/releases/latest">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 17v3h16v-3"/></svg>
+            <span data-download-label>Download</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/portvex/bxplore">
+            View source
+          </a>
+        </div>
+        <p class="dl-meta" data-download-meta>Latest release on GitHub &middot; <a href="#install">all platforms</a></p>
+        <ul class="platforms" aria-label="Supported platforms">
+          <li>Windows</li><li>macOS</li><li>Linux</li>
+          <li class="sep" aria-hidden="true"></li>
+          <li>x86_64</li><li>ARM64</li>
+        </ul>
+
+        <figure class="window hero-shot reveal">
+          <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><em>bxplore</em></div>
+          <img src="assets/screenshots/pe-headers.png" width="1600" height="1025"
+               alt="bxplore showing the PE optional header of a Windows executable, with the selected field highlighted in the hex panel">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Format strip -->
+    <section class="strip" aria-label="Supported formats">
+      <div class="wrap strip-inner">
+        <div class="fmt"><b>PE</b><span>PE32 &middot; PE32+ &middot; .NET</span></div>
+        <div class="fmt"><b>ELF</b><span>32/64-bit &middot; both byte orders</span></div>
+        <div class="fmt"><b>Mach-O</b><span>thin &amp; universal</span></div>
+        <div class="fmt"><b>x86 &middot; ARM</b><span>32 and 64-bit disassembly</span></div>
+      </div>
+    </section>
+
+    <!-- Screens -->
+    <section class="section" id="screens">
+      <div class="wrap">
+        <header class="section-head reveal">
+          <p class="kicker">Screens</p>
+          <h2>One window. Every structure.</h2>
+          <p>PE, ELF and Mach-O files, shown in both the dark and the light theme.</p>
+        </header>
+
+        <div class="gallery reveal">
+          <div class="tabs" role="tablist" aria-label="Screenshots">
+            <button role="tab" aria-selected="true"  data-shot="0">PE headers</button>
+            <button role="tab" aria-selected="false" data-shot="1">Imports</button>
+            <button role="tab" aria-selected="false" data-shot="2">Resources</button>
+            <button role="tab" aria-selected="false" data-shot="3">Disassembler</button>
+            <button role="tab" aria-selected="false" data-shot="4">ELF sections</button>
+            <button role="tab" aria-selected="false" data-shot="5">Mach-O signature</button>
+          </div>
+
+          <figure class="window shot-frame">
+            <div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><em id="shot-title">PE optional header</em></div>
+            <button class="shot-zoom" type="button" aria-label="Open the screenshot full size">
+              <img id="shot-img" src="assets/screenshots/pe-headers.png" width="1600" height="1025"
+                   alt="PE optional header with the selected field highlighted in the hex panel">
+            </button>
+            <figcaption id="shot-caption">The selected field is highlighted in the hex panel below the table.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+      <div class="wrap">
+        <header class="section-head reveal">
+          <p class="kicker">Features</p>
+          <h2>A complete toolkit for every format</h2>
+          <p>Each header is shown as Member, Offset, Size, Value and Meaning. To change a value, double-click it.</p>
+        </header>
+
+        <div class="cards">
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6v4H4zM14 5h6v4h-6zM4 15h6v4H4zM7 9v6M14 17h6"/></svg></div>
+            <h3>Structure tree</h3>
+            <p>Every header, directory and table in one tree, with icons by kind and a row filter in every table.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></svg></div>
+            <h3>Edit in place</h3>
+            <p>Flag and enum fields get check boxes and drop-downs. Undo with Ctrl/Cmd+Z, and export your changes as a patch list or a Python script.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 16l3 2-3 2"/></svg></div>
+            <h3>Hex editor</h3>
+            <p>Linked to the selection, with typing, go to offset, and hex or text search. "Structure" jumps to whatever covers the cursor.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg></div>
+            <h3>Disassembler</h3>
+            <p>x86, x64, ARM and ARM64, with import names and strings as comments, a function list, and double-click to follow calls.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M17 4v16M3 9h8M13 15h8"/></svg></div>
+            <h3>Compare</h3>
+            <p>Diff against another file or another open tab: a structure-level comparison plus a byte summary.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div>
+            <h3>Signatures, verified</h3>
+            <p>Authenticode is checked cryptographically (RSA and ECDSA, chains, timestamps), and every Mach-O code page hash is verified.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></div>
+            <h3>Search &amp; navigate</h3>
+            <p>Search every structure. Follow a value as an RVA, VA or file offset, and go Back and Forward through your history.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9M19 14v6H4V5h6"/></svg></div>
+            <h3>Tools built in</h3>
+            <p>An address converter, a strings view (ASCII and UTF-16), MD5, SHA-1 and SHA-256 hashes, entropy, imphash, and bookmarks with notes.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Formats -->
+    <section class="section" id="formats">
+      <div class="wrap">
+        <header class="section-head reveal">
+          <p class="kicker">Formats</p>
+          <h2>It rebuilds the file, too</h2>
+          <p>bxplore rewrites the tables that other tools only display, and it writes a valid file back.</p>
+        </header>
+
+        <div class="formats">
+          <article class="format reveal">
+            <header><span class="tag tag-pe">PE</span><h3>Windows &amp; .NET</h3></header>
+            <h4>View</h4>
+            <ul>
+              <li>DOS, Rich, NT and optional headers, data directories, and sections with entropy</li>
+              <li>Export, import, delay import, resources, exception, TLS, load config, debug and overlay</li>
+              <li>.NET metadata tables, signatures, and an IL disassembler</li>
+              <li>Authenticode, including nested signatures and RFC 3161 timestamps</li>
+            </ul>
+            <h4>Edit</h4>
+            <ul class="edit">
+              <li>Add, delete or dump sections</li>
+              <li>Add and rename imports; unbind; convert delay imports</li>
+              <li>Add, rename, delete or forward exports</li>
+              <li>Preview, replace or add resources (icons, version info, manifests)</li>
+              <li>Edit relocations and TLS callbacks; recompute CheckSum and SizeOfImage</li>
+            </ul>
+          </article>
+
+          <article class="format reveal">
+            <header><span class="tag tag-elf">ELF</span><h3>Linux &amp; Unix</h3></header>
+            <h4>View</h4>
+            <ul>
+              <li>Header, program headers and section headers</li>
+              <li>Dynamic section, symbol tables, relocations, and notes (build id)</li>
+              <li>Symbol versioning, needed and defined versions</li>
+              <li>GNU hash table, with every chain entry checked</li>
+            </ul>
+            <h4>Edit</h4>
+            <ul class="edit">
+              <li>Add, rename or remove needed libraries</li>
+              <li>Set or remove SONAME, RPATH and RUNPATH</li>
+              <li>Move the tables to a new PT_LOAD segment when they no longer fit</li>
+              <li>Add, remove or dump sections</li>
+            </ul>
+          </article>
+
+          <article class="format reveal">
+            <header><span class="tag tag-macho">Mach-O</span><h3>macOS &amp; iOS</h3></header>
+            <h4>View</h4>
+            <ul>
+              <li>Fat header, mach header, load commands, segments, and symbols</li>
+              <li>Exports trie, bind and rebase opcodes, and chained fixups</li>
+              <li>Objective-C classes and methods, and Swift types</li>
+              <li>Code signature: CDHash, entitlements, and a check of every page hash</li>
+            </ul>
+            <h4>Edit</h4>
+            <ul class="edit">
+              <li>Add, change or remove library load commands</li>
+              <li>Edit run paths in every architecture</li>
+              <li>Remove the code signature command</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="section" id="install">
+      <div class="wrap">
+        <header class="section-head reveal">
+          <p class="kicker">Install</p>
+          <h2>Get bxplore</h2>
+          <p>Packages for x86_64 and ARM64. Pick yours below, or browse the <a href="https://github.com/portvex/bxplore/releases/latest">releases page</a> (with <span data-sums>SHA256SUMS</span>).</p>
+        </header>
+
+        <div class="install reveal">
+          <div class="tabs" role="tablist" aria-label="Platform">
+            <button role="tab" aria-selected="true"  aria-controls="pane-win"   id="tab-win">Windows</button>
+            <button role="tab" aria-selected="false" aria-controls="pane-mac"   id="tab-mac">macOS</button>
+            <button role="tab" aria-selected="false" aria-controls="pane-linux" id="tab-linux">Linux</button>
+            <button role="tab" aria-selected="false" aria-controls="pane-nix"   id="tab-nix">Nix</button>
+            <button role="tab" aria-selected="false" aria-controls="pane-src"   id="tab-src">From source</button>
+          </div>
+
+          <div class="pane" role="tabpanel" id="pane-win" aria-labelledby="tab-win">
+            <p>Download the <b>NSIS installer</b> (<code>-setup.exe</code>) or the <b>portable zip</b>, which holds only <code>bxplore.exe</code>. The installer adds "Open with bxplore" to Explorer's right-click menu.</p>
+            <div class="assets" data-assets="windows"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
+          </div>
+
+          <div class="pane" role="tabpanel" id="pane-mac" aria-labelledby="tab-mac" hidden>
+            <p>Download the universal DMG, which runs on both Intel and Apple Silicon, or install with Homebrew.</p>
+            <div class="assets" data-assets="macos"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
+            <div class="code"><pre><code>brew install --cask portvex/tap/bxplore</code></pre><button class="copy" type="button">Copy</button></div>
+            <p class="note">bxplore is not notarized. Open the app the first time with right-click &rarr; Open, or run:</p>
+            <div class="code"><pre><code>xattr -dr com.apple.quarantine /Applications/bxplore.app</code></pre><button class="copy" type="button">Copy</button></div>
+          </div>
+
+          <div class="pane" role="tabpanel" id="pane-linux" aria-labelledby="tab-linux" hidden>
+            <p>Releases include a <b>standalone executable</b> (also as <code>.tar.gz</code>) and a <b>Flatpak</b>, each for x86_64 and aarch64.</p>
+            <div class="assets" data-assets="linux"><a class="btn btn-primary btn-sm" href="https://github.com/portvex/bxplore/releases/latest">Go to the latest release</a></div>
+            <div class="code"><pre><code>flatpak install --user ./bxplore-*-linux-x86_64.flatpak</code></pre><button class="copy" type="button">Copy</button></div>
+          </div>
+
+          <div class="pane" role="tabpanel" id="pane-nix" aria-labelledby="tab-nix" hidden>
+            <p>The flake builds for <code>x86_64-linux</code> and <code>aarch64-linux</code>.</p>
+            <div class="code"><pre><code>nix run github:portvex/bxplore</code></pre><button class="copy" type="button">Copy</button></div>
+            <div class="code"><pre><code>nix profile install github:portvex/bxplore</code></pre><button class="copy" type="button">Copy</button></div>
+          </div>
+
+          <div class="pane" role="tabpanel" id="pane-src" aria-labelledby="tab-src" hidden>
+            <p>You need Rust and a C compiler (Capstone is built from source). On Linux, you also need the GTK 3 development packages.</p>
+            <div class="code"><pre><code>cargo build --release
+./target/release/bxplore [file]
+./target/release/bxplore --dump &lt;file&gt;</code></pre><button class="copy" type="button">Copy</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Closing CTA -->
+    <section class="section final">
+      <div class="wrap final-inner reveal">
+        <img src="assets/icon.svg" alt="" width="72" height="72">
+        <h2>Open a binary and look inside.</h2>
+        <p>It's free and open source, with nothing to sign up for.</p>
+        <div class="cta">
+          <a class="btn btn-primary" data-download href="https://github.com/portvex/bxplore/releases/latest"><span data-download-label>Download bxplore</span></a>
+          <a class="btn btn-ghost" href="https://github.com/portvex/bxplore">Star on GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span>&copy; bxplore contributors &middot; <a href="https://github.com/portvex/bxplore/blob/main/LICENSE">MIT License</a></span>
+      <span><a href="https://github.com/portvex/bxplore">GitHub</a> &middot; <a href="https://github.com/portvex/bxplore/releases">Releases</a> &middot; <a href="https://github.com/portvex/bxplore/issues">Issues</a></span>
+    </div>
+  </footer>
+
+  <dialog class="lightbox" id="lightbox" aria-label="Screenshot">
+    <button class="lightbox-close" type="button" aria-label="Close">&times;</button>
+    <img alt="">
+  </dialog>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
