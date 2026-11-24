@@ -9,6 +9,7 @@ target=${1:-all}
 sysroot=$(rustup run nightly rustc --print sysroot)
 PATH="$sysroot/bin:$PATH"
 export PATH
+# Also passed to cargo-fuzz: a static (musl) cargo-fuzz would otherwise build for musl.
 host=$(rustc -vV | sed -n 's/^host: //p')
 cov="$sysroot/lib/rustlib/$host/bin/llvm-cov"
 if [ ! -x "$cov" ]; then
@@ -24,7 +25,7 @@ for t in $target; do
     all=$(mktemp -d)
     cp fuzz/corpus/$t/* fuzz/seeds/$t/* "$all/" 2>/dev/null || true
     rm -rf "fuzz/coverage/$t"
-    if ! cargo fuzz coverage "$t" "$all" > "fuzz/coverage/$t.log" 2>&1; then
+    if ! cargo fuzz coverage --target "$host" "$t" "$all" > "fuzz/coverage/$t.log" 2>&1; then
         echo "$t: cargo fuzz coverage failed, see fuzz/coverage/$t.log" >&2
         rm -rf "$all"
         continue
