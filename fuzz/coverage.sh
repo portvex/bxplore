@@ -18,6 +18,11 @@ if [ ! -x "$cov" ]; then
 fi
 [ "$target" = all ] && target="parse_any parse_each pe_edit resource_previews elf_edit macho_edit queries decoders structured differential"
 mkdir -p fuzz/coverage
+# `cargo fuzz run` turns off AddressSanitizer's ODR check itself, `cargo fuzz
+# coverage` does not: capstone's C code (duplicate switch tables) then aborts
+# the run before any coverage is written.
+ASAN_OPTIONS="${ASAN_OPTIONS:-detect_odr_violation=0}"
+export ASAN_OPTIONS
 for t in $target; do
     mkdir -p "fuzz/corpus/$t" "fuzz/seeds/$t"
     # One directory only: cargo-fuzz writes the profile of each directory it is
@@ -31,9 +36,16 @@ for t in $target; do
         continue
     fi
     rm -rf "$all"
-    # cargo-fuzz versions differ in where they put the instrumented binary.
-    bin="target/$host/coverage/$host/release/$t"
-    [ -x "$bin" ] || bin="fuzz/target/$host/coverage/$host/release/$t"
+    # cargo-fuzz versions differ in where they put the instrumented binary, and
+    # the first directory is the triple cargo-fuzz itself was built for.
+    bin=
+    for b in target/*/coverage/"$host"/release/"$t" fuzz/target/*/coverage/"$host"/release/"$t"; do
+        [ -x "$b" ] && bin=$b && break
+    done
+    if [ -z "$bin" ]; then
+        echo "$t: instrumented binary not found under target/ or fuzz/target/" >&2
+        continue
+    fi
     "$cov" report "$bin" \
         -instr-profile="fuzz/coverage/$t/coverage.profdata" \
         -ignore-filename-regex='(\.cargo|rustc|fuzz_targets)' > "fuzz/coverage/$t.txt"
